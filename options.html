@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>RackNerd 服务器配置</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; padding: 32px 24px; background: #f5f6f8; max-width: 860px; margin: 0 auto; color: #333; }
+    
+    .header-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+    h1 { font-size: 22px; color: #1a1a1a; display: flex; align-items: center; gap: 8px; margin-bottom: 0; }
+    
+    .lang-select {
+      padding: 6px 12px;
+      border: 1px solid #dcdcdc;
+      border-radius: 8px;
+      font-size: 13px;
+      outline: none;
+      cursor: pointer;
+      background: white;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    .lang-select:hover {
+      border-color: #4a90d9;
+      box-shadow: 0 2px 8px rgba(74,144,217,0.1);
+    }
+    
+    .container { display: flex; gap: 24px; align-items: flex-start; }
+    .card { background: white; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.04); padding: 24px; border: 1px solid #eef0f2; }
+    
+    .left-panel { width: 320px; flex-shrink: 0; display: flex; flex-direction: column; gap: 16px; }
+    .right-panel { flex: 1; min-width: 0; }
+    
+    .server-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border: 1px solid #e8e8e8; border-radius: 8px; cursor: pointer; transition: all 0.2s; background: #fafafa; }
+    .server-item:hover { border-color: #4a90d9; background: #f7faff; }
+    .server-item.active { border-color: #4a90d9; background: #eef5fc; box-shadow: 0 0 0 2px rgba(74,144,217,0.15); }
+    
+    .server-info { display: flex; flex-direction: column; gap: 4px; overflow: hidden; flex: 1; }
+    .server-title-container { display: flex; align-items: center; }
+    .server-name { font-size: 13px; font-weight: 600; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .server-host { font-size: 11px; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    
+    .badge-default {
+      background: #ffb300;
+      color: white;
+      font-size: 9px;
+      font-weight: bold;
+      padding: 1px 4px;
+      border-radius: 4px;
+      margin-left: 6px;
+      display: inline-block;
+      line-height: 1.2;
+    }
+    
+    .server-actions { display: flex; gap: 4px; margin-left: 8px; }
+    .btn-icon { background: none; border: none; font-size: 13px; cursor: pointer; padding: 4px 6px; border-radius: 4px; transition: background 0.2s; color: #666; }
+    .btn-icon:hover { background: rgba(0,0,0,0.06); }
+    .btn-icon.del:hover { color: #f44336; background: #ffebee; }
+    .btn-icon.star { color: #ccc; font-size: 14px; }
+    .btn-icon.star:hover { color: #ffb300; background: #fff8e1; }
+    .btn-icon.star.active { color: #ffb300; }
+    
+    .btn-add { width: 100%; padding: 10px; border: 1px dashed #4a90d9; background: #f4f8fc; color: #4a90d9; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; text-align: center; transition: all 0.2s; }
+    .btn-add:hover { background: #eef5fc; border-style: solid; }
+    
+    .form-title { font-size: 16px; font-weight: 600; margin-bottom: 20px; color: #333; }
+    .form-group { margin-bottom: 16px; }
+    label { display: block; font-weight: 600; margin-bottom: 6px; color: #555; font-size: 13px; }
+    input { width: 100%; padding: 10px 12px; border: 1px solid #dcdcdc; border-radius: 8px; font-size: 14px; color: #333; transition: all 0.2s; }
+    input:focus { outline: none; border-color: #4a90d9; box-shadow: 0 0 0 3px rgba(74,144,217,0.15); }
+    .hint { font-size: 11px; color: #999; margin-top: 4px; }
+    
+    .form-actions { display: flex; gap: 10px; margin-top: 24px; }
+    button.btn-primary { padding: 10px 24px; background: #4a90d9; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+    button.btn-primary:hover { background: #357abd; }
+    button.btn-secondary { padding: 10px 20px; background: #666; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+    button.btn-secondary:hover { background: #555; }
+    
+    .msg { margin-top: 16px; padding: 10px 14px; border-radius: 6px; font-size: 13px; display: none; line-height: 1.4; word-break: break-all; }
+    .msg.ok { display: block; background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; }
+    .msg.err { display: block; background: #fce4ec; color: #c62828; border: 1px solid #ffcdd2; }
+  </style>
+</head>
+<body>
+  <div class="header-container">
+    <h1 id="i18n_title">⚙️ RackNerd API 配置中心</h1>
+    <select id="languageSelect" class="lang-select">
+      <option value="zh">简体中文</option>
+      <option value="en">English</option>
+    </select>
+  </div>
+  
+  <div class="container">
+    <!-- 左侧面板：服务器列表 -->
+    <div class="left-panel card">
+      <button id="addBtn" class="btn-add">➕ 添加新服务器</button>
+      <div id="serverList" style="display: flex; flex-direction: column; gap: 10px; max-height: 460px; overflow-y: auto; padding-right: 2px;">
+        <!-- 服务器列表动态渲染 -->
+      </div>
+    </div>
+    
+    <!-- 右侧面板：表单卡片 -->
+    <div class="right-panel card">
+      <div id="formTitle" class="form-title">添加新服务器</div>
+      
+      <div class="form-group">
+        <label id="i18n_labelName">服务器别名</label>
+        <input type="text" id="serverName" placeholder="例如：洛杉矶 1">
+        <div id="i18n_hintName" class="hint">给这台服务器起一个好记的名字</div>
+      </div>
+      
+      <div class="form-group">
+        <label id="i18n_labelUrl">API 地址（SolusVM 面板 URL）</label>
+        <input type="url" id="apiUrl" placeholder="https://nerdvm.racknerd.com/api/client/command.php">
+        <div id="i18n_hintUrl" class="hint">RackNerd 客户后台 → Services → 选择 VPS → SolusVM Panel URL</div>
+      </div>
+      
+      <div class="form-group">
+        <label id="i18n_labelKey">API Key</label>
+        <input type="text" id="apiKey" placeholder="输入 API Key">
+        <div id="i18n_hintKey" class="hint">在 SolusVM 面板 → API 标签页中获取</div>
+      </div>
+      
+      <div class="form-group">
+        <label id="i18n_labelHash">API Hash</label>
+        <input type="text" id="apiHash" placeholder="输入 API Hash">
+        <div id="i18n_hintHash" class="hint">在 SolusVM 面板 → API 标签页中获取</div>
+      </div>
+      
+      <div class="form-actions">
+        <button id="saveBtn" class="btn-primary">保存配置</button>
+        <button id="testBtn" class="btn-secondary">测试连接</button>
+      </div>
+      <div id="msg" class="msg"></div>
+    </div>
+  </div>
+
+  <script src="i18n.js"></script>
+  <script src="options.js"></script>
+</body>
+</html>
