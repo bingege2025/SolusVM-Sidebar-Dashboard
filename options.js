@@ -1,4 +1,4 @@
-// 选项页面逻辑
+// Options page logic
 
 const $ = id => document.getElementById(id);
 
@@ -8,7 +8,7 @@ let defaultServerId = null;
 
 const t = window.t;
 
-// HTML 实体转义防止 XSS
+// HTML escape to prevent XSS
 function escapeHtml(str) {
   if (!str) return '';
   return str.replace(/&/g, '&amp;')
@@ -23,7 +23,7 @@ function showMsg(text, ok) {
   if (el) {
     el.textContent = text;
     el.className = 'msg ' + (ok ? 'ok' : 'err');
-    el.style.display = 'block'; // 覆盖内联 display: none 样式
+    el.style.display = 'block'; // Override inline display: none style
   }
 }
 
@@ -34,7 +34,7 @@ function hideMsg() {
   }
 }
 
-// 应用多语言翻译
+// Apply internationalization translations
 function applyTranslations() {
   $('i18n_title').textContent = t('title');
   $('addBtn').textContent = t('btnAdd');
@@ -56,7 +56,7 @@ function applyTranslations() {
   $('apiKey').placeholder = t('placeholderKey');
   $('apiHash').placeholder = t('placeholderHash');
   
-  // 表单标题
+  // Form title
   if (editingServerId) {
     const s = servers.find(item => item.id === editingServerId);
     $('formTitle').textContent = t('formTitleEdit', { name: s ? s.name : '' });
@@ -67,7 +67,7 @@ function applyTranslations() {
   renderServerList();
 }
 
-// 渲染服务器列表
+// Render server list
 function renderServerList() {
   const listEl = $('serverList');
   if (servers.length === 0) {
@@ -96,13 +96,13 @@ function renderServerList() {
         </div>
         <div class="server-actions">
           <button class="btn-icon star ${isDefault ? 'active' : ''}" data-id="${s.id}" title="${t('tagDefault')}">${isDefault ? '★' : '☆'}</button>
-          <button class="btn-icon del" data-id="${s.id}" title="删除">🗑️</button>
+          <button class="btn-icon del" data-id="${s.id}" title="Delete">🗑️</button>
         </div>
       </div>
     `;
   }).join('');
   
-  // 绑定选择事件
+  // Bind select event
   document.querySelectorAll('.server-item').forEach(el => {
     el.addEventListener('click', e => {
       if (e.target.classList.contains('del') || e.target.classList.contains('star')) return;
@@ -110,7 +110,7 @@ function renderServerList() {
     });
   });
   
-  // 绑定删除事件
+  // Bind delete event
   document.querySelectorAll('.btn-icon.del').forEach(el => {
     el.addEventListener('click', e => {
       e.stopPropagation();
@@ -118,14 +118,14 @@ function renderServerList() {
     });
   });
 
-  // 绑定设置默认事件
+  // Bind set-default event
   document.querySelectorAll('.btn-icon.star').forEach(el => {
     el.addEventListener('click', e => {
       e.stopPropagation();
       const serverId = el.dataset.id;
       const newDefaultId = defaultServerId === serverId ? null : serverId;
       
-      // 使用 Callback，杜绝卡死
+      // Use callbacks to avoid UI freezes
       chrome.storage.local.set({ defaultServerId: newDefaultId }, () => {
         defaultServerId = newDefaultId;
         renderServerList();
@@ -134,7 +134,7 @@ function renderServerList() {
   });
 }
 
-// 选择编辑服务器
+// Select server for editing
 function selectServer(id) {
   editingServerId = id;
   const s = servers.find(item => item.id === id);
@@ -152,7 +152,7 @@ function selectServer(id) {
   }
 }
 
-// 切换至新增表单
+// Switch to add-new form
 function showNewForm() {
   editingServerId = null;
   $('formTitle').textContent = t('formTitleAdd');
@@ -167,50 +167,50 @@ function showNewForm() {
   hideMsg();
 }
 
-// 载入与旧版本数据兼容
+// Load configuration and migrate from legacy versions
 function loadConfig() {
   try {
     chrome.storage.local.get(['servers', 'currentServerId', 'defaultServerId', 'apiUrl', 'apiKey', 'apiHash', 'lang'], data => {
       if (chrome.runtime.lastError) console.error(chrome.runtime.lastError);
       data = data || {};
       let list = data.servers || [];
-    
-    // 平滑兼容迁移
-    if (list.length === 0 && data.apiUrl && data.apiKey && data.apiHash) {
-      const oldServer = {
-        id: 'server_' + Date.now(),
-        name: '默认服务器',
-        apiUrl: data.apiUrl,
-        apiKey: data.apiKey,
-        apiHash: data.apiHash
-      };
-      list = [oldServer];
-      chrome.storage.local.set({
-        servers: list,
-        currentServerId: oldServer.id
-      }, () => {
-        chrome.storage.local.remove(['apiUrl', 'apiKey', 'apiHash']);
-      });
-    }
-    
-    // 初始化语言
-    if (data.lang) {
-      window.currentLang = data.lang;
-    } else {
-      window.currentLang = 'en';
-    }
-    $('languageSelect').value = window.currentLang;
-    
-    servers = list;
-    defaultServerId = data.defaultServerId || null;
-    
-    applyTranslations();
-    
-    const activeId = data.currentServerId || (servers[0] ? servers[0].id : null);
-    if (activeId) {
-      selectServer(activeId);
-    } else {
-      showNewForm();
+      
+      // Smooth compatibility migration
+      if (list.length === 0 && data.apiUrl && data.apiKey && data.apiHash) {
+        const oldServer = {
+          id: 'server_' + Date.now(),
+          name: 'Default Server',
+          apiUrl: data.apiUrl,
+          apiKey: data.apiKey,
+          apiHash: data.apiHash
+        };
+        list = [oldServer];
+        chrome.storage.local.set({
+          servers: list,
+          currentServerId: oldServer.id
+        }, () => {
+          chrome.storage.local.remove(['apiUrl', 'apiKey', 'apiHash']);
+        });
+      }
+      
+      // Initialize language
+      if (data.lang) {
+        window.currentLang = data.lang;
+      } else {
+        window.currentLang = 'en'; // Default to English
+      }
+      $('languageSelect').value = window.currentLang;
+      
+      servers = list;
+      defaultServerId = data.defaultServerId || null;
+      
+      applyTranslations();
+      
+      const activeId = data.currentServerId || (servers[0] ? servers[0].id : null);
+      if (activeId) {
+        selectServer(activeId);
+      } else {
+        showNewForm();
       }
     });
   } catch (e) {
@@ -218,7 +218,7 @@ function loadConfig() {
   }
 }
 
-// 保存配置
+// Save configuration
 function saveServer() {
   const name = $('serverName').value.trim();
   const apiUrl = $('apiUrl').value.trim();
@@ -245,29 +245,29 @@ function saveServer() {
       data = data || {};
       let currentId = data.currentServerId;
       const isEditing = !!editingServerId;
-    
-    if (isEditing) {
-      servers = servers.map(s => {
-        if (s.id === editingServerId) {
-          return { ...s, ...config };
-        }
-        return s;
-      });
-    } else {
-      const newId = 'server_' + Date.now();
-      const newServer = { id: newId, ...config };
-      servers.push(newServer);
-      editingServerId = newId;
-      currentId = newId;
-    }
-    
-    chrome.storage.local.set({
-      servers,
-      currentServerId: currentId
-    }, () => {
-      renderServerList();
-      selectServer(editingServerId);
-      showMsg(t(isEditing ? 'msgSaved' : 'msgAdded'), true);
+      
+      if (isEditing) {
+        servers = servers.map(s => {
+          if (s.id === editingServerId) {
+            return { ...s, ...config };
+          }
+          return s;
+        });
+      } else {
+        const newId = 'server_' + Date.now();
+        const newServer = { id: newId, ...config };
+        servers.push(newServer);
+        editingServerId = newId;
+        currentId = newId;
+      }
+      
+      chrome.storage.local.set({
+        servers,
+        currentServerId: currentId
+      }, () => {
+        renderServerList();
+        selectServer(editingServerId);
+        showMsg(t(isEditing ? 'msgSaved' : 'msgAdded'), true);
       });
     });
   } catch (e) {
@@ -276,7 +276,7 @@ function saveServer() {
   }
 }
 
-// 删除服务器
+// Delete server
 function deleteServer(id) {
   const s = servers.find(item => item.id === id);
   if (!s) return;
@@ -290,22 +290,22 @@ function deleteServer(id) {
       data = data || {};
       let currentId = data.currentServerId;
       if (currentId === id) {
-      currentId = servers[0] ? servers[0].id : null;
-    }
-    
-    chrome.storage.local.remove('cache_' + id, () => {
-      chrome.storage.local.set({
-        servers,
-        currentServerId: currentId
-      }, () => {
-        if (editingServerId === id || servers.length === 0) {
-          if (servers.length > 0) {
-            selectServer(servers[0].id);
+        currentId = servers[0] ? servers[0].id : null;
+      }
+      
+      chrome.storage.local.remove('cache_' + id, () => {
+        chrome.storage.local.set({
+          servers,
+          currentServerId: currentId
+        }, () => {
+          if (editingServerId === id || servers.length === 0) {
+            if (servers.length > 0) {
+              selectServer(servers[0].id);
+            } else {
+              showNewForm();
+            }
           } else {
-            showNewForm();
-          }
-        } else {
-          renderServerList();
+            renderServerList();
           }
           showMsg(t('msgDeleted'), true);
         });
@@ -316,7 +316,7 @@ function deleteServer(id) {
   }
 }
 
-// 测试连接
+// Test API connection
 function testConnection() {
   const apiUrl = $('apiUrl').value.trim();
   const apiKey = $('apiKey').value.trim();
@@ -349,7 +349,7 @@ function testConnection() {
   }
 }
 
-// 绑定事件
+// Bind DOM events
 $('addBtn').addEventListener('click', showNewForm);
 $('saveBtn').addEventListener('click', saveServer);
 $('testBtn').addEventListener('click', testConnection);
@@ -362,5 +362,5 @@ $('languageSelect').addEventListener('change', e => {
   });
 });
 
-// 载入
+// Load configuration on startup
 loadConfig();

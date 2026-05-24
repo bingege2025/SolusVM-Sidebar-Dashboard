@@ -1,9 +1,9 @@
-// 全局多语言翻译包
+// Global translations package
 window.currentLang = 'en';
 
 window.i18nDict = {
   zh: {
-    // Popup 词条
+    // Popup keys
     noConfig: "尚未配置 API 信息",
     goConfig: "前往配置 →",
     loading: "⏳ 加载中...",
@@ -33,7 +33,7 @@ window.i18nDict = {
     shutdown: "关机",
     boot: "开机",
     
-    // Options 词条
+    // Options keys
     title: "⚙️ RackNerd API 配置中心",
     btnAdd: "➕ 添加新服务器",
     emptyServers: "🫙 暂无服务器",
@@ -43,7 +43,7 @@ window.i18nDict = {
     placeholderName: "例如：洛杉矶 1",
     hintName: "给这台服务器起一个好记的名字",
     labelUrl: "API 地址（SolusVM 面板 URL）",
-    placeholderUrl: "https://nerdvm.racknerd.com/api/client/command.php",
+    placeholderUrl: "https://xxx.racknerd.com:5656",
     hintUrl: "RackNerd 客户后台 → Services → 选择 VPS → SolusVM Panel URL",
     labelKey: "API Key",
     placeholderKey: "输入 API Key",
@@ -66,7 +66,7 @@ window.i18nDict = {
     tagDefault: "设为默认"
   },
   en: {
-    // Popup 词条
+    // Popup keys
     noConfig: "No API Configuration Found",
     goConfig: "Go to Settings →",
     loading: "⏳ Loading...",
@@ -96,7 +96,7 @@ window.i18nDict = {
     shutdown: "Shutdown",
     boot: "Boot",
     
-    // Options 词条
+    // Options keys
     title: "⚙️ RackNerd Config Center",
     btnAdd: "➕ Add New Server",
     emptyServers: "🫙 No Servers Configured",
@@ -106,7 +106,7 @@ window.i18nDict = {
     placeholderName: "e.g., Los Angeles 1",
     hintName: "Give this server a memorable name",
     labelUrl: "API URL (SolusVM Panel URL)",
-    placeholderUrl: "https://nerdvm.racknerd.com/api/client/command.php",
+    placeholderUrl: "https://xxx.racknerd.com:5656",
     hintUrl: "RackNerd Client Portal → Services → Select VPS → SolusVM Panel URL",
     labelKey: "API Key",
     placeholderKey: "Enter API Key",
@@ -130,7 +130,7 @@ window.i18nDict = {
   }
 };
 
-// 初始化语言
+// Initialize language
 window.initI18n = function(callback) {
   try {
     chrome.storage.local.get('lang', data => {
@@ -140,7 +140,7 @@ window.initI18n = function(callback) {
       if (data && data.lang) {
         window.currentLang = data.lang;
       } else {
-        window.currentLang = 'en'; // 默认英文
+        window.currentLang = 'en'; // Default to English
       }
       if (callback) callback();
     });
@@ -151,10 +151,10 @@ window.initI18n = function(callback) {
   }
 };
 
-// 翻译
+// Translate function
 window.t = function(key, params = {}) {
-  const translations = window.i18nDict[window.currentLang] || window.i18nDict['zh'];
-  let text = translations[key] || window.i18nDict['zh'][key] || key;
+  const translations = window.i18nDict[window.currentLang] || window.i18nDict['en'];
+  let text = translations[key] || window.i18nDict['en'][key] || key;
   for (const [k, v] of Object.entries(params)) {
     text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
   }

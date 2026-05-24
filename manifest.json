@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "RackNerd Server Manager",
   "version": "1.0.0",
-  "description": "管理 RackNerd 服务器 - 查看状态、重启服务器",
+  "description": "Manage RackNerd servers - view status, reboot, and shutdown.",
   "permissions": ["storage"],
   "host_permissions": ["https://*/*"],
   "action": {
