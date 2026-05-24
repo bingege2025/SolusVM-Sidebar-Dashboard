@@ -91,10 +91,33 @@ async function init() {
   const main = $('main');
   if (!main) return;
   
-  // Traditional callback mechanism for maximum compatibility
+  // Traditional callback mechanism with timeout protection
+  let done = false;
+  const timeout = setTimeout(() => {
+    if (!done) {
+      done = true;
+      console.warn('init: storage.local.get timed out');
+      main.innerHTML = `<div class="error">⚠️ Storage Timeout. Please <a href="#" id="reloadLink">Reload Extension</a> or Re-open Popup.</div>`;
+      const reloadLink = $('reloadLink');
+      if (reloadLink) {
+        reloadLink.addEventListener('click', e => {
+          e.preventDefault();
+          location.reload();
+        });
+      }
+    }
+  }, 1500);
+
   try {
     initStep = 'Retrieving servers from storage...';
+    if (!chrome || !chrome.storage || !chrome.storage.local) {
+      throw new Error('chrome.storage.local is not available');
+    }
     chrome.storage.local.get(['servers', 'currentServerId', 'defaultServerId'], data => {
+      clearTimeout(timeout);
+      if (done) return;
+      done = true;
+      
       if (chrome.runtime.lastError) console.error(chrome.runtime.lastError);
       data = data || {};
       initStep = 'Checking servers data...';
@@ -158,7 +181,11 @@ async function init() {
       refreshInfo();
     });
   } catch (e) {
-    console.error('init storage error:', e);
+    clearTimeout(timeout);
+    if (!done) {
+      done = true;
+      main.innerHTML = `<div class="error">❌ Storage error: ${e.message}</div>`;
+    }
   }
 }
 
@@ -168,9 +195,22 @@ function refreshInfo(bypassCache = false) {
   const statusBar = $('statusBar');
   if (!main || !statusBar) return;
   
+  let done = false;
+  const timeout = setTimeout(() => {
+    if (!done) {
+      done = true;
+      console.warn('refreshInfo: storage.local.get timed out');
+      main.innerHTML = `<div class="error">⚠️ Storage Timeout during refresh.</div>`;
+    }
+  }, 1500);
+
   try {
     initStep = 'Getting current server ID...';
     chrome.storage.local.get(['servers', 'currentServerId'], data => {
+      clearTimeout(timeout);
+      if (done) return;
+      done = true;
+
       if (chrome.runtime.lastError) console.error(chrome.runtime.lastError);
       data = data || {};
       const currentId = data.currentServerId || (data.servers && data.servers[0] ? data.servers[0].id : null);
@@ -180,7 +220,19 @@ function refreshInfo(bypassCache = false) {
       
       if (!bypassCache) {
         initStep = 'Loading cache...';
+        let cacheDone = false;
+        const cacheTimeout = setTimeout(() => {
+          if (!cacheDone) {
+            cacheDone = true;
+            loadFreshData(currentId, cacheKey, null);
+          }
+        }, 1000);
+
         chrome.storage.local.get(cacheKey, cacheResult => {
+          clearTimeout(cacheTimeout);
+          if (cacheDone) return;
+          cacheDone = true;
+          
           if (chrome.runtime.lastError) console.error(chrome.runtime.lastError);
           cacheResult = cacheResult || {};
           const cachedData = cacheResult[cacheKey];
@@ -191,7 +243,11 @@ function refreshInfo(bypassCache = false) {
       }
     });
   } catch (e) {
-    console.error('refreshInfo storage error:', e);
+    clearTimeout(timeout);
+    if (!done) {
+      done = true;
+      console.error('refreshInfo storage error:', e);
+    }
   }
 
   function loadFreshData(currentId, cacheKey, cachedData) {

@@ -130,24 +130,45 @@ window.i18nDict = {
   }
 };
 
-// Initialize language
+// Initialize language with storage timeout fallback
 window.initI18n = function(callback) {
-  try {
-    chrome.storage.local.get('lang', data => {
-      if (chrome.runtime.lastError) {
-        console.error(chrome.runtime.lastError);
-      }
-      if (data && data.lang) {
-        window.currentLang = data.lang;
-      } else {
-        window.currentLang = 'en'; // Default to English
-      }
+  let done = false;
+  const timeout = setTimeout(() => {
+    if (!done) {
+      done = true;
+      console.warn('initI18n: storage.local.get timed out, falling back to English');
+      window.currentLang = 'en';
       if (callback) callback();
+    }
+  }, 800);
+
+  try {
+    if (!chrome || !chrome.storage || !chrome.storage.local) {
+      throw new Error('chrome.storage.local is not available');
+    }
+    chrome.storage.local.get('lang', data => {
+      clearTimeout(timeout);
+      if (!done) {
+        done = true;
+        if (chrome.runtime.lastError) {
+          console.error(chrome.runtime.lastError);
+        }
+        if (data && data.lang) {
+          window.currentLang = data.lang;
+        } else {
+          window.currentLang = 'en';
+        }
+        if (callback) callback();
+      }
     });
   } catch (e) {
-    console.error('initI18n error:', e);
-    window.currentLang = 'en';
-    if (callback) callback();
+    clearTimeout(timeout);
+    if (!done) {
+      done = true;
+      console.error('initI18n error:', e);
+      window.currentLang = 'en';
+      if (callback) callback();
+    }
   }
 };
 
