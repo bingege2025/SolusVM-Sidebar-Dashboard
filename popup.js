@@ -1,69 +1,30 @@
-// Popup page logic
+// Popup page logic — fully synchronous init, no async/await
 
 const $ = id => document.getElementById(id);
 
-let initStep = 'Starting...';
-
-// Global exception handler to prevent silent freeze
+// Global exception handlers
 window.onerror = function(message, source, lineno, colno, error) {
-  const errMsg = `Error: ${message} at ${lineno}:${colno}`;
-  console.error(errMsg);
+  console.error(`Error: ${message} at ${lineno}:${colno}`);
   const main = document.getElementById('main');
-  if (main) {
-    main.innerHTML = `<div class="error">❌ ${errMsg}</div>`;
-  }
+  if (main) main.innerHTML = `<div class="error">❌ ${message}</div>`;
 };
-
-// Global exception handler for promises to prevent silent freeze
 window.onunhandledrejection = function(event) {
-  const errMsg = `Promise Error: ${event.reason}`;
-  console.error(errMsg);
+  console.error('Promise Error:', event.reason);
   const main = document.getElementById('main');
-  if (main) {
-    main.innerHTML = `<div class="error">❌ ${errMsg}</div>`;
-  }
+  if (main) main.innerHTML = `<div class="error">❌ ${event.reason}</div>`;
 };
 
-// Set a timeout to warn if initialization hangs
-setTimeout(() => {
-  const main = $('main');
-  const serverSelect = $('serverSelect');
-  if (main && serverSelect && serverSelect.innerHTML.includes('Loading servers...')) {
-    main.innerHTML = `<div class="error">⏳ Loading timeout. Stuck at: ${initStep}</div>`;
-  }
-}, 4000);
+// ---- Utility functions ----
 
-// Initialize language
-function initI18n() {
-  return new Promise(resolve => {
-    initStep = 'Initializing language (initI18n)...';
-    window.initI18n(() => {
-      const btn = $('settingsBtn');
-      if (btn) {
-        btn.title = window.t('settings');
-      }
-      resolve();
-    });
-  });
-}
-
-const t = window.t;
-
-// Format byte size
 function formatSize(bytes) {
   const val = parseFloat(bytes);
   if (isNaN(val)) return '-';
   const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-  let size = val;
-  let idx = 0;
-  while (size >= 1024 && idx < units.length - 1) {
-    size /= 1024;
-    idx++;
-  }
+  let size = val, idx = 0;
+  while (size >= 1024 && idx < units.length - 1) { size /= 1024; idx++; }
   return `${size.toFixed(size % 1 === 0 ? 0 : 2)} ${units[idx]}`;
 }
 
-// Format SolusVM resource field (Total, Used, Free, Percent)
 function formatResource(val) {
   if (!val || typeof val !== 'string') return '-';
   const parts = val.split(',');
@@ -72,7 +33,62 @@ function formatResource(val) {
   return `${formatSize(used)} / ${formatSize(total)} (${percent}%)`;
 }
 
-// Open settings page
+// Send message to background service worker (Promise-based, with safety net)
+function sendMessage(action) {
+  return new Promise(resolve => {
+    try {
+      chrome.runtime.sendMessage({ action }, response => {
+        if (chrome.runtime.lastError) {
+          resolve({ success: false, error: chrome.runtime.lastError.message });
+        } else if (!response) {
+          resolve({ success: false, error: 'No response from background script' });
+        } else {
+          resolve(response);
+        }
+      });
+    } catch (e) {
+      resolve({ success: false, error: e.message });
+    }
+  });
+}
+
+// Safe storage.local.get with timeout fallback
+function safeStorageGet(keys, callback, timeoutMs) {
+  timeoutMs = timeoutMs || 2000;
+  let fired = false;
+  const timer = setTimeout(() => {
+    if (!fired) {
+      fired = true;
+      console.warn('chrome.storage.local.get timed out for keys:', keys);
+      callback(null);
+    }
+  }, timeoutMs);
+
+  try {
+    chrome.storage.local.get(keys, data => {
+      clearTimeout(timer);
+      if (!fired) {
+        fired = true;
+        if (chrome.runtime.lastError) {
+          console.error('storage.get error:', chrome.runtime.lastError);
+          callback(null);
+        } else {
+          callback(data || {});
+        }
+      }
+    });
+  } catch (e) {
+    clearTimeout(timer);
+    if (!fired) {
+      fired = true;
+      console.error('storage.get exception:', e);
+      callback(null);
+    }
+  }
+}
+
+// ---- UI binding ----
+
 const settingsBtn = $('settingsBtn');
 if (settingsBtn) {
   settingsBtn.addEventListener('click', e => {
@@ -81,232 +97,156 @@ if (settingsBtn) {
   });
 }
 
-// Initialization
-async function init() {
-  try {
-    await initI18n();
-  } catch (e) {
-    console.error('initI18n error:', e);
-  }
+// ---- Main initialization (fully synchronous, no await) ----
+
+(function init() {
   const main = $('main');
-  if (!main) return;
-  
-  // Traditional callback mechanism with timeout protection
-  let done = false;
-  const timeout = setTimeout(() => {
-    if (!done) {
-      done = true;
-      console.warn('init: storage.local.get timed out');
-      main.innerHTML = `<div class="error">⚠️ Storage Timeout. Please <a href="#" id="reloadLink">Reload Extension</a> or Re-open Popup.</div>`;
-      const reloadLink = $('reloadLink');
-      if (reloadLink) {
-        reloadLink.addEventListener('click', e => {
-          e.preventDefault();
-          location.reload();
-        });
-      }
-    }
-  }, 1500);
-
-  try {
-    initStep = 'Retrieving servers from storage...';
-    if (!chrome || !chrome.storage || !chrome.storage.local) {
-      throw new Error('chrome.storage.local is not available');
-    }
-    chrome.storage.local.get(['servers', 'currentServerId', 'defaultServerId'], data => {
-      clearTimeout(timeout);
-      if (done) return;
-      done = true;
-      
-      if (chrome.runtime.lastError) console.error(chrome.runtime.lastError);
-      data = data || {};
-      initStep = 'Checking servers data...';
-      if (!data.servers || data.servers.length === 0) {
-        main.innerHTML = `
-          <div class="no-config">
-            <p>${t('noConfig')}</p>
-            <p style="margin-top:8px;"><a href="#" id="goConfig">${t('goConfig')}</a></p>
-          </div>`;
-        const goConfig = document.getElementById('goConfig');
-        if (goConfig) {
-          goConfig.addEventListener('click', e => {
-            e.preventDefault();
-            chrome.runtime.openOptionsPage();
-          });
-        }
-        const statusBar = $('statusBar');
-        if (statusBar) statusBar.style.display = 'none';
-        const serverSelect = $('serverSelect');
-        if (serverSelect) serverSelect.innerHTML = `<option disabled selected>${t('noServers')}</option>`;
-        return;
-      }
-
-      // Handle default server
-      initStep = 'Handling default server...';
-      let activeId = data.currentServerId;
-      if (data.defaultServerId) {
-        const defaultExists = data.servers.some(s => s.id === data.defaultServerId);
-        if (defaultExists) {
-          activeId = data.defaultServerId;
-          chrome.storage.local.set({ currentServerId: activeId });
-        }
-      }
-
-      if (!activeId || !data.servers.some(s => s.id === activeId)) {
-        activeId = data.servers[0].id;
-        chrome.storage.local.set({ currentServerId: activeId });
-      }
-      
-      // Render server dropdown selection
-      initStep = 'Rendering server select dropdown...';
-      const serverSelect = $('serverSelect');
-      if (serverSelect) {
-        serverSelect.innerHTML = data.servers.map(s => 
-          `<option value="${s.id}" ${s.id === activeId ? 'selected' : ''}>${s.name}</option>`
-        ).join('');
-        
-        // Bind switch event
-        if (!serverSelect.dataset.listenerBound) {
-          serverSelect.addEventListener('change', e => {
-            const newId = e.target.value;
-            chrome.storage.local.set({ currentServerId: newId }, () => {
-              refreshInfo();
-            });
-          });
-          serverSelect.dataset.listenerBound = 'true';
-        }
-      }
-      
-      initStep = 'Refreshing server info...';
-      refreshInfo();
-    });
-  } catch (e) {
-    clearTimeout(timeout);
-    if (!done) {
-      done = true;
-      main.innerHTML = `<div class="error">❌ Storage error: ${e.message}</div>`;
-    }
-  }
-}
-
-// Refresh server details
-function refreshInfo(bypassCache = false) {
-  const main = $('main');
+  const serverSelect = $('serverSelect');
   const statusBar = $('statusBar');
+  if (!main) return;
+
+  // Step 1: Fire-and-forget language init (do NOT block on it)
+  // window.t() already works with the default 'en' set in i18n.js
+  if (typeof window.initI18n === 'function') {
+    window.initI18n(() => {
+      // Update settings button title once language is loaded
+      if (settingsBtn) settingsBtn.title = window.t('settings');
+    });
+  }
+
+  // We can use t() immediately because currentLang defaults to 'en'
+  // and the dictionary is loaded synchronously via i18n.js
+  const t = window.t;
+
+  // Step 2: Load servers from storage (with timeout protection)
+  safeStorageGet(['servers', 'currentServerId', 'defaultServerId'], data => {
+    if (!data) {
+      // Storage timed out or errored — show retry prompt
+      main.innerHTML = `
+        <div class="error">
+          ⚠️ Unable to read storage. 
+          <a href="#" id="retryLink" style="color:#4a90d9;">Retry</a>
+        </div>`;
+      const retryLink = $('retryLink');
+      if (retryLink) retryLink.addEventListener('click', e => { e.preventDefault(); init(); });
+      return;
+    }
+
+    if (!data.servers || data.servers.length === 0) {
+      main.innerHTML = `
+        <div class="no-config">
+          <p>${t('noConfig')}</p>
+          <p style="margin-top:8px;"><a href="#" id="goConfig">${t('goConfig')}</a></p>
+        </div>`;
+      const goConfig = $('goConfig');
+      if (goConfig) goConfig.addEventListener('click', e => { e.preventDefault(); chrome.runtime.openOptionsPage(); });
+      if (statusBar) statusBar.style.display = 'none';
+      if (serverSelect) serverSelect.innerHTML = `<option disabled selected>${t('noServers')}</option>`;
+      return;
+    }
+
+    // Determine active server
+    let activeId = data.currentServerId;
+    if (data.defaultServerId && data.servers.some(s => s.id === data.defaultServerId)) {
+      activeId = data.defaultServerId;
+      chrome.storage.local.set({ currentServerId: activeId });
+    }
+    if (!activeId || !data.servers.some(s => s.id === activeId)) {
+      activeId = data.servers[0].id;
+      chrome.storage.local.set({ currentServerId: activeId });
+    }
+
+    // Render dropdown
+    if (serverSelect) {
+      serverSelect.innerHTML = data.servers.map(s =>
+        `<option value="${s.id}" ${s.id === activeId ? 'selected' : ''}>${s.name}</option>`
+      ).join('');
+
+      if (!serverSelect.dataset.listenerBound) {
+        serverSelect.addEventListener('change', e => {
+          chrome.storage.local.set({ currentServerId: e.target.value }, () => refreshInfo(t, main, statusBar));
+        });
+        serverSelect.dataset.listenerBound = 'true';
+      }
+    }
+
+    refreshInfo(t, main, statusBar);
+  }, 2000);
+})();
+
+// ---- Refresh server info ----
+
+function refreshInfo(t, main, statusBar, bypassCache) {
+  t = t || window.t;
+  main = main || $('main');
+  statusBar = statusBar || $('statusBar');
   if (!main || !statusBar) return;
-  
-  let done = false;
-  const timeout = setTimeout(() => {
-    if (!done) {
-      done = true;
-      console.warn('refreshInfo: storage.local.get timed out');
-      main.innerHTML = `<div class="error">⚠️ Storage Timeout during refresh.</div>`;
+
+  safeStorageGet(['servers', 'currentServerId'], data => {
+    if (!data) return;
+    const currentId = data.currentServerId || (data.servers && data.servers[0] ? data.servers[0].id : null);
+    if (!currentId) return;
+
+    const cacheKey = 'cache_' + currentId;
+
+    if (!bypassCache) {
+      safeStorageGet(cacheKey, cacheData => {
+        const cached = cacheData ? cacheData[cacheKey] : null;
+        loadFresh(currentId, cacheKey, cached, t, main, statusBar);
+      }, 1000);
+    } else {
+      loadFresh(currentId, cacheKey, null, t, main, statusBar);
     }
   }, 1500);
-
-  try {
-    initStep = 'Getting current server ID...';
-    chrome.storage.local.get(['servers', 'currentServerId'], data => {
-      clearTimeout(timeout);
-      if (done) return;
-      done = true;
-
-      if (chrome.runtime.lastError) console.error(chrome.runtime.lastError);
-      data = data || {};
-      const currentId = data.currentServerId || (data.servers && data.servers[0] ? data.servers[0].id : null);
-      if (!currentId) return;
-
-      const cacheKey = 'cache_' + currentId;
-      
-      if (!bypassCache) {
-        initStep = 'Loading cache...';
-        let cacheDone = false;
-        const cacheTimeout = setTimeout(() => {
-          if (!cacheDone) {
-            cacheDone = true;
-            loadFreshData(currentId, cacheKey, null);
-          }
-        }, 1000);
-
-        chrome.storage.local.get(cacheKey, cacheResult => {
-          clearTimeout(cacheTimeout);
-          if (cacheDone) return;
-          cacheDone = true;
-          
-          if (chrome.runtime.lastError) console.error(chrome.runtime.lastError);
-          cacheResult = cacheResult || {};
-          const cachedData = cacheResult[cacheKey];
-          loadFreshData(currentId, cacheKey, cachedData);
-        });
-      } else {
-        loadFreshData(currentId, cacheKey, null);
-      }
-    });
-  } catch (e) {
-    clearTimeout(timeout);
-    if (!done) {
-      done = true;
-      console.error('refreshInfo storage error:', e);
-    }
-  }
-
-  function loadFreshData(currentId, cacheKey, cachedData) {
-    // If cache exists, render it first for instant load
-    if (cachedData) {
-      renderServerInfo(cachedData, cachedData);
-      statusBar.style.display = 'block';
-      statusBar.textContent = t('lastUpdatedCache', { time: cachedData.lastUpdated || 'Unknown' });
-    } else {
-      main.innerHTML = `<div class="loading">${t('loading')}</div>`;
-    }
-
-    // Fetch latest data in parallel to resolve bugs where some SolusVM panels do not include vmstate
-    initStep = 'Sending API requests to background...';
-    Promise.all([
-      sendMessage('getStatus'),
-      sendMessage('getInfo')
-    ]).then(([statusRes, infoRes]) => {
-      initStep = 'API response received. Rendering...';
-      if (!statusRes.success) throw new Error(statusRes.error);
-      if (!infoRes.success) throw new Error(infoRes.error);
-
-      const statusData = statusRes.data;
-      const infoData = infoRes.data;
-
-      // Combine latest data
-      const freshData = {
-        ...infoData,
-        status: statusData.status,
-        statusmsg: statusData.statusmsg,
-        vmstate: statusData.vmstate,
-        lastUpdated: new Date().toLocaleTimeString()
-      };
-
-      // Write to cache and refresh rendering
-      chrome.storage.local.set({ [cacheKey]: freshData }, () => {
-        renderServerInfo(freshData, freshData);
-        statusBar.style.display = 'block';
-        statusBar.textContent = t('lastUpdated', { time: freshData.lastUpdated });
-        initStep = 'Finished!';
-      });
-    }).catch(err => {
-      initStep = 'Error: ' + err.message;
-      if (cachedData) {
-        statusBar.style.display = 'block';
-        statusBar.textContent = t('updateFail', { error: err.message });
-      } else {
-        main.innerHTML = `<div class="error">❌ ${err.message}</div>`;
-      }
-    });
-  }
 }
 
-// Render server details
-function renderServerInfo(status, info) {
-  const main = $('main');
+function loadFresh(currentId, cacheKey, cachedData, t, main, statusBar) {
+  if (cachedData) {
+    renderServerInfo(cachedData, cachedData, t, main);
+    statusBar.style.display = 'block';
+    statusBar.textContent = t('lastUpdatedCache', { time: cachedData.lastUpdated || 'Unknown' });
+  } else {
+    main.innerHTML = `<div class="loading">${t('loading')}</div>`;
+  }
+
+  Promise.all([
+    sendMessage('getStatus'),
+    sendMessage('getInfo')
+  ]).then(([statusRes, infoRes]) => {
+    if (!statusRes.success) throw new Error(statusRes.error);
+    if (!infoRes.success) throw new Error(infoRes.error);
+
+    const freshData = {
+      ...infoRes.data,
+      status: statusRes.data.status,
+      statusmsg: statusRes.data.statusmsg,
+      vmstate: statusRes.data.vmstate,
+      lastUpdated: new Date().toLocaleTimeString()
+    };
+
+    chrome.storage.local.set({ [cacheKey]: freshData }, () => {
+      renderServerInfo(freshData, freshData, t, main);
+      statusBar.style.display = 'block';
+      statusBar.textContent = t('lastUpdated', { time: freshData.lastUpdated });
+    });
+  }).catch(err => {
+    if (cachedData) {
+      statusBar.style.display = 'block';
+      statusBar.textContent = t('updateFail', { error: err.message });
+    } else {
+      main.innerHTML = `<div class="error">❌ ${err.message}</div>`;
+    }
+  });
+}
+
+// ---- Render server info ----
+
+function renderServerInfo(status, info, t, main) {
+  t = t || window.t;
+  main = main || $('main');
   if (!main) return;
   const isOnline = status.statusmsg === 'online' || status.vmstate === 'online' || status.status === 'online' || status.vmstate === 'running';
-  
+
   main.innerHTML = `
     <div class="content">
       <div class="info-grid">
@@ -328,62 +268,38 @@ function renderServerInfo(status, info) {
       <div class="actions">
         <button class="btn-refresh" id="refreshBtn">${t('btnRefresh')}</button>
         <button class="btn-reboot" id="rebootBtn">${t('btnReboot')}</button>
-        ${isOnline ? 
-          `<button class="btn-shutdown" id="shutdownBtn">${t('btnShutdown')}</button>` :
-          `<button class="btn-boot" id="bootBtn">${t('btnBoot')}</button>`
+        ${isOnline
+          ? `<button class="btn-shutdown" id="shutdownBtn">${t('btnShutdown')}</button>`
+          : `<button class="btn-boot" id="bootBtn">${t('btnBoot')}</button>`
         }
       </div>
     </div>`;
-  
-  // Bind button click events
-  const refreshBtn = $('refreshBtn');
-  if (refreshBtn) refreshBtn.addEventListener('click', () => refreshInfo(true));
-  
-  const rebootBtn = $('rebootBtn');
-  if (rebootBtn) rebootBtn.addEventListener('click', () => doAction('reboot', t('reboot')));
-  
+
+  $('refreshBtn').addEventListener('click', () => refreshInfo(t, main, $('statusBar'), true));
+  $('rebootBtn').addEventListener('click', () => doAction('reboot', t('reboot'), t, main));
   if (isOnline) {
-    const shutdownBtn = $('shutdownBtn');
-    if (shutdownBtn) shutdownBtn.addEventListener('click', () => doAction('shutdown', t('shutdown')));
+    const btn = $('shutdownBtn');
+    if (btn) btn.addEventListener('click', () => doAction('shutdown', t('shutdown'), t, main));
   } else {
-    const bootBtn = $('bootBtn');
-    if (bootBtn) bootBtn.addEventListener('click', () => doAction('boot', t('boot')));
+    const btn = $('bootBtn');
+    if (btn) btn.addEventListener('click', () => doAction('boot', t('boot'), t, main));
   }
 }
 
-// Execute operation (Reboot/Boot/Shutdown)
-async function doAction(action, label) {
-  const main = $('main');
+// ---- Execute operation ----
+
+function doAction(action, label, t, main) {
+  t = t || window.t;
+  main = main || $('main');
   if (!main) return;
   main.innerHTML = `<div class="loading">${t('loadingAction', { action: label })}</div>`;
-  
-  const res = await sendMessage(action);
-  if (res.success) {
-    main.innerHTML = `<div class="loading">${t('sentAction', { action: label })}</div>`;
-    await new Promise(r => setTimeout(r, 5000));
-    await refreshInfo(true);
-  } else {
-    main.innerHTML = `<div class="error">${t('actionFail', { action: label, error: res.error })}</div>`;
-  }
-}
 
-// Send message to background service worker
-function sendMessage(action) {
-  return new Promise(resolve => {
-    try {
-      chrome.runtime.sendMessage({ action }, response => {
-        if (chrome.runtime.lastError) {
-          resolve({ success: false, error: chrome.runtime.lastError.message });
-        } else if (!response) {
-          resolve({ success: false, error: 'No response from background script' });
-        } else {
-          resolve(response);
-        }
-      });
-    } catch (e) {
-      resolve({ success: false, error: e.message });
+  sendMessage(action).then(res => {
+    if (res.success) {
+      main.innerHTML = `<div class="loading">${t('sentAction', { action: label })}</div>`;
+      setTimeout(() => refreshInfo(t, main, $('statusBar'), true), 5000);
+    } else {
+      main.innerHTML = `<div class="error">${t('actionFail', { action: label, error: res.error })}</div>`;
     }
   });
 }
-
-init();
