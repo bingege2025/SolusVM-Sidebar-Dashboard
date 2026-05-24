@@ -2,6 +2,8 @@
 
 const $ = id => document.getElementById(id);
 
+let initStep = 'Starting...';
+
 // Global exception handler to prevent silent freeze
 window.onerror = function(message, source, lineno, colno, error) {
   const errMsg = `Error: ${message} at ${lineno}:${colno}`;
@@ -12,9 +14,29 @@ window.onerror = function(message, source, lineno, colno, error) {
   }
 };
 
+// Global exception handler for promises to prevent silent freeze
+window.onunhandledrejection = function(event) {
+  const errMsg = `Promise Error: ${event.reason}`;
+  console.error(errMsg);
+  const main = document.getElementById('main');
+  if (main) {
+    main.innerHTML = `<div class="error">❌ ${errMsg}</div>`;
+  }
+};
+
+// Set a timeout to warn if initialization hangs
+setTimeout(() => {
+  const main = $('main');
+  const serverSelect = $('serverSelect');
+  if (main && serverSelect && serverSelect.innerHTML.includes('Loading servers...')) {
+    main.innerHTML = `<div class="error">⏳ Loading timeout. Stuck at: ${initStep}</div>`;
+  }
+}, 4000);
+
 // Initialize language
 function initI18n() {
   return new Promise(resolve => {
+    initStep = 'Initializing language (initI18n)...';
     window.initI18n(() => {
       const btn = $('settingsBtn');
       if (btn) {
@@ -71,9 +93,11 @@ async function init() {
   
   // Traditional callback mechanism for maximum compatibility
   try {
+    initStep = 'Retrieving servers from storage...';
     chrome.storage.local.get(['servers', 'currentServerId', 'defaultServerId'], data => {
       if (chrome.runtime.lastError) console.error(chrome.runtime.lastError);
       data = data || {};
+      initStep = 'Checking servers data...';
       if (!data.servers || data.servers.length === 0) {
         main.innerHTML = `
           <div class="no-config">
@@ -95,6 +119,7 @@ async function init() {
       }
 
       // Handle default server
+      initStep = 'Handling default server...';
       let activeId = data.currentServerId;
       if (data.defaultServerId) {
         const defaultExists = data.servers.some(s => s.id === data.defaultServerId);
@@ -110,6 +135,7 @@ async function init() {
       }
       
       // Render server dropdown selection
+      initStep = 'Rendering server select dropdown...';
       const serverSelect = $('serverSelect');
       if (serverSelect) {
         serverSelect.innerHTML = data.servers.map(s => 
@@ -128,6 +154,7 @@ async function init() {
         }
       }
       
+      initStep = 'Refreshing server info...';
       refreshInfo();
     });
   } catch (e) {
@@ -142,6 +169,7 @@ function refreshInfo(bypassCache = false) {
   if (!main || !statusBar) return;
   
   try {
+    initStep = 'Getting current server ID...';
     chrome.storage.local.get(['servers', 'currentServerId'], data => {
       if (chrome.runtime.lastError) console.error(chrome.runtime.lastError);
       data = data || {};
@@ -151,6 +179,7 @@ function refreshInfo(bypassCache = false) {
       const cacheKey = 'cache_' + currentId;
       
       if (!bypassCache) {
+        initStep = 'Loading cache...';
         chrome.storage.local.get(cacheKey, cacheResult => {
           if (chrome.runtime.lastError) console.error(chrome.runtime.lastError);
           cacheResult = cacheResult || {};
@@ -176,10 +205,12 @@ function refreshInfo(bypassCache = false) {
     }
 
     // Fetch latest data in parallel to resolve bugs where some SolusVM panels do not include vmstate
+    initStep = 'Sending API requests to background...';
     Promise.all([
       sendMessage('getStatus'),
       sendMessage('getInfo')
     ]).then(([statusRes, infoRes]) => {
+      initStep = 'API response received. Rendering...';
       if (!statusRes.success) throw new Error(statusRes.error);
       if (!infoRes.success) throw new Error(infoRes.error);
 
@@ -200,8 +231,10 @@ function refreshInfo(bypassCache = false) {
         renderServerInfo(freshData, freshData);
         statusBar.style.display = 'block';
         statusBar.textContent = t('lastUpdated', { time: freshData.lastUpdated });
+        initStep = 'Finished!';
       });
     }).catch(err => {
+      initStep = 'Error: ' + err.message;
       if (cachedData) {
         statusBar.style.display = 'block';
         statusBar.textContent = t('updateFail', { error: err.message });
