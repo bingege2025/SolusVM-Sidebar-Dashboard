@@ -17,7 +17,6 @@ zip -r "$OUTPUT" . \
   -x ".env" \
   -x "*.map" \
   -x "CHROMEWEBSTORE.md" \
-  -x "README.md" \
   -x "PRIVACY.md" \
   -x ".DS_Store" \
   -x "Thumbs.db" \
