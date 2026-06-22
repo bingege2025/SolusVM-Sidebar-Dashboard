@@ -38,39 +38,112 @@
     .no-config a { color: #4a90d9; }
     .brand { display: flex; align-items: center; gap: 8px; flex: 1; }
     .logo { font-size: 16px; line-height: 1; }
-    .server-select {
+    .custom-select {
+      position: relative;
+      display: inline-block;
+      width: 220px;
+      font-family: inherit;
+    }
+    .select-trigger {
       background: rgba(255, 255, 255, 0.15);
       border: 1px solid rgba(255, 255, 255, 0.25);
       color: white;
       font-size: 13px;
       font-weight: 600;
-      padding: 5px 10px;
+      padding: 5px 28px 5px 10px;
       border-radius: 6px;
-      outline: none;
       cursor: pointer;
-      max-width: 220px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: all 0.2s;
+      user-select: none;
+    }
+    .select-trigger span:first-child {
       text-overflow: ellipsis;
       white-space: nowrap;
       overflow: hidden;
-      transition: all 0.2s;
-      appearance: none;
-      background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='white' stroke-width='2' viewBox='0 0 24 24'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-      background-repeat: no-repeat;
-      background-position: right 8px center;
-      padding-right: 24px;
+      flex: 1;
     }
-    .server-select:hover {
+    .select-trigger .arrow {
+      border: solid white;
+      border-width: 0 2px 2px 0;
+      display: inline-block;
+      padding: 3px;
+      transform: rotate(45deg);
+      transition: transform 0.2s;
+      margin-left: 8px;
+    }
+    .custom-select.open .select-trigger .arrow {
+      transform: rotate(-135deg);
+      margin-top: 4px;
+    }
+    .select-trigger:hover {
       background: rgba(255, 255, 255, 0.25);
       border-color: rgba(255, 255, 255, 0.4);
     }
-    .server-select:focus {
-      background: rgba(255, 255, 255, 0.3);
-      border-color: rgba(255, 255, 255, 0.5);
-    }
-    .server-select option {
-      color: #333;
+    .select-dropdown {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
       background: white;
-      font-weight: normal;
+      border: 1px solid rgba(0, 0, 0, 0.15);
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      margin-top: 6px;
+      padding: 8px;
+      z-index: 100;
+    }
+    .search-input {
+      width: 100%;
+      padding: 6px 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 12px;
+      outline: none;
+      margin-bottom: 8px;
+      transition: border-color 0.2s;
+    }
+    .search-input:focus {
+      border-color: #4a90d9;
+    }
+    .select-options {
+      max-height: 160px;
+      overflow-y: auto;
+    }
+    .select-options::-webkit-scrollbar {
+      width: 4px;
+    }
+    .select-options::-webkit-scrollbar-thumb {
+      background: #ccc;
+      border-radius: 2px;
+    }
+    .select-option {
+      padding: 8px 10px;
+      font-size: 13px;
+      color: #333;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: background 0.15s, color 0.15s;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      text-align: left;
+    }
+    .select-option:hover {
+      background: #f5f5f5;
+    }
+    .select-option.selected {
+      background: #e3f2fd;
+      color: #1565c0;
+      font-weight: 600;
+    }
+    .select-option.no-results {
+      color: #999;
+      font-style: italic;
+      cursor: default;
+      background: transparent !important;
     }
   </style>
 </head>
@@ -78,9 +151,18 @@
   <div class="header">
     <div class="brand">
       <span class="logo">🖥️</span>
-      <select id="serverSelect" class="server-select">
-        <option value="" disabled selected>Loading servers...</option>
-      </select>
+      <div class="custom-select" id="customSelect">
+        <div class="select-trigger" id="selectTrigger">
+          <span id="selectedServerName">Loading servers...</span>
+          <span class="arrow"></span>
+        </div>
+        <div class="select-dropdown" id="selectDropdown" style="display: none;">
+          <input type="text" id="serverSearchInput" class="search-input" placeholder="Search servers...">
+          <div class="select-options" id="selectOptions">
+            <!-- Dynamic options -->
+          </div>
+        </div>
+      </div>
     </div>
     <a href="#" id="settingsBtn" title="Settings">⚙️</a>
   </div>

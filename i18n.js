@@ -32,6 +32,7 @@ window.i18nDict = {
     reboot: "重启",
     shutdown: "关机",
     boot: "开机",
+    searchPlaceholder: "搜索服务器...",
     
     // Options keys
     title: "⚙️ RackNerd API 配置中心",
@@ -95,6 +96,7 @@ window.i18nDict = {
     reboot: "Reboot",
     shutdown: "Shutdown",
     boot: "Boot",
+    searchPlaceholder: "Search servers...",
     
     // Options keys
     title: "⚙️ RackNerd Config Center",

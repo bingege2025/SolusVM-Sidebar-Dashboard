@@ -101,7 +101,6 @@ if (settingsBtn) {
 
 (function init() {
   const main = $('main');
-  const serverSelect = $('serverSelect');
   const statusBar = $('statusBar');
   if (!main) return;
 
@@ -141,7 +140,8 @@ if (settingsBtn) {
       const goConfig = $('goConfig');
       if (goConfig) goConfig.addEventListener('click', e => { e.preventDefault(); chrome.runtime.openOptionsPage(); });
       if (statusBar) statusBar.style.display = 'none';
-      if (serverSelect) serverSelect.innerHTML = `<option disabled selected>${t('noServers')}</option>`;
+      const selectedName = $('selectedServerName');
+      if (selectedName) selectedName.textContent = t('noServers');
       return;
     }
 
@@ -156,17 +156,81 @@ if (settingsBtn) {
       chrome.storage.local.set({ currentServerId: activeId });
     }
 
-    // Render dropdown
-    if (serverSelect) {
-      serverSelect.innerHTML = data.servers.map(s =>
-        `<option value="${s.id}" ${s.id === activeId ? 'selected' : ''}>${s.name}</option>`
-      ).join('');
+    // Render custom searchable dropdown
+    const customSelect = $('customSelect');
+    const selectTrigger = $('selectTrigger');
+    const selectedServerName = $('selectedServerName');
+    const selectDropdown = $('selectDropdown');
+    const serverSearchInput = $('serverSearchInput');
+    const selectOptions = $('selectOptions');
 
-      if (!serverSelect.dataset.listenerBound) {
-        serverSelect.addEventListener('change', e => {
-          chrome.storage.local.set({ currentServerId: e.target.value }, () => refreshInfo(t, main, statusBar));
+    if (customSelect && selectTrigger && selectedServerName && selectDropdown && serverSearchInput && selectOptions) {
+      serverSearchInput.placeholder = t('searchPlaceholder') || 'Search servers...';
+      
+      const renderOptions = (query) => {
+        const filtered = data.servers.filter(s => s.name.toLowerCase().includes(query.toLowerCase()));
+        if (filtered.length === 0) {
+          selectOptions.innerHTML = `<div class="select-option no-results">${t('noServers')}</div>`;
+          return;
+        }
+        selectOptions.innerHTML = filtered.map(s => 
+          `<div class="select-option ${s.id === activeId ? 'selected' : ''}" data-id="${s.id}">${s.name}</div>`
+        ).join('');
+
+        const optionNodes = selectOptions.querySelectorAll('.select-option:not(.no-results)');
+        optionNodes.forEach(node => {
+          node.addEventListener('click', e => {
+            const newId = node.getAttribute('data-id');
+            activeId = newId;
+            chrome.storage.local.set({ currentServerId: newId }, () => {
+              customSelect.classList.remove('open');
+              selectDropdown.style.display = 'none';
+              serverSearchInput.value = '';
+              const activeServer = data.servers.find(s => s.id === activeId);
+              selectedServerName.textContent = activeServer ? activeServer.name : (t('noServers'));
+              refreshInfo(t, main, statusBar);
+            });
+          });
         });
-        serverSelect.dataset.listenerBound = 'true';
+      };
+
+      const activeServer = data.servers.find(s => s.id === activeId);
+      selectedServerName.textContent = activeServer ? activeServer.name : (t('noServers'));
+      renderOptions('');
+
+      if (!selectTrigger.dataset.listenerBound) {
+        selectTrigger.addEventListener('click', e => {
+          e.stopPropagation();
+          const isOpen = customSelect.classList.contains('open');
+          if (isOpen) {
+            customSelect.classList.remove('open');
+            selectDropdown.style.display = 'none';
+          } else {
+            customSelect.classList.add('open');
+            selectDropdown.style.display = 'block';
+            serverSearchInput.focus();
+            serverSearchInput.select();
+          }
+        });
+        selectTrigger.dataset.listenerBound = 'true';
+      }
+
+      if (!serverSearchInput.dataset.listenerBound) {
+        serverSearchInput.addEventListener('input', e => {
+          renderOptions(e.target.value);
+        });
+        serverSearchInput.addEventListener('click', e => e.stopPropagation());
+        serverSearchInput.dataset.listenerBound = 'true';
+      }
+
+      if (!window.clickOutsideListenerBound) {
+        document.addEventListener('click', () => {
+          customSelect.classList.remove('open');
+          selectDropdown.style.display = 'none';
+          serverSearchInput.value = '';
+          renderOptions('');
+        });
+        window.clickOutsideListenerBound = true;
       }
     }
 
