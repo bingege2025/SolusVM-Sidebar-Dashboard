@@ -95,6 +95,13 @@
       padding: 8px;
       z-index: 100;
     }
+    .search-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 30px;
+      gap: 6px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
     .search-input {
       width: 100%;
       padding: 6px 10px;
@@ -102,11 +109,84 @@
       border-radius: 4px;
       font-size: 12px;
       outline: none;
-      margin-bottom: 8px;
       transition: border-color 0.2s;
     }
     .search-input:focus {
       border-color: #4a90d9;
+    }
+    .privacy-toggle {
+      width: 30px;
+      height: 30px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid #dde4ee;
+      border-radius: 6px;
+      background: #f8fafc;
+      color: #526071;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s;
+    }
+    .privacy-toggle:hover {
+      border-color: #b8d6f4;
+      background: #f0f7ff;
+      color: #1565c0;
+    }
+    .privacy-toggle.active {
+      border-color: #4a90d9;
+      background: #e7f2fd;
+      color: #1565c0;
+      box-shadow: inset 0 0 0 1px rgba(74, 144, 217, 0.12);
+    }
+    .privacy-toggle svg {
+      width: 16px;
+      height: 16px;
+      pointer-events: none;
+    }
+    .blur-text {
+      display: inline-block;
+      filter: blur(4px);
+      user-select: none;
+      transition: filter 0.12s ease;
+    }
+    .tag-filter {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding: 0 0 8px;
+      margin-bottom: 4px;
+      scrollbar-width: none;
+    }
+    .tag-filter::-webkit-scrollbar {
+      display: none;
+    }
+    .tag-pill {
+      flex: 0 0 auto;
+      max-width: 110px;
+      padding: 4px 9px;
+      border: 1px solid #e4e8ef;
+      border-radius: 999px;
+      background: #f7f9fc;
+      color: #435063;
+      font-size: 11px;
+      font-weight: 600;
+      line-height: 1.2;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s;
+    }
+    .tag-pill:hover {
+      border-color: #b8d6f4;
+      background: #f0f7ff;
+      color: #1565c0;
+    }
+    .tag-pill.active {
+      border-color: #4a90d9;
+      background: #e7f2fd;
+      color: #1565c0;
+      box-shadow: inset 0 0 0 1px rgba(74, 144, 217, 0.12);
     }
     .select-options {
       max-height: 160px;
@@ -145,6 +225,57 @@
       cursor: default;
       background: transparent !important;
     }
+
+    /* ---- Feedback Section ---- */
+    .feedback-section {
+      padding: 10px 16px 14px;
+      border-top: 1px solid #e8ecf1;
+      background: linear-gradient(180deg, #f8f9fb 0%, #f1f3f7 100%);
+    }
+    .feedback-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: #8a94a6;
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .feedback-pills {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .feedback-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 5px 10px;
+      border: 1px solid #dde2ea;
+      border-radius: 999px;
+      background: white;
+      color: #4a5568;
+      font-size: 11px;
+      font-weight: 500;
+      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+    .feedback-pill:hover {
+      border-color: #4a90d9;
+      color: #2a6cb8;
+      background: #eef4fc;
+      box-shadow: 0 1px 3px rgba(74, 144, 217, 0.15);
+      transform: translateY(-1px);
+    }
+    .feedback-pill:active {
+      transform: translateY(0);
+      box-shadow: none;
+    }
+    .feedback-pill .pill-icon {
+      font-size: 12px;
+      line-height: 1;
+    }
   </style>
 </head>
 <body>
@@ -157,7 +288,16 @@
           <span class="arrow"></span>
         </div>
         <div class="select-dropdown" id="selectDropdown" style="display: none;">
-          <input type="text" id="serverSearchInput" class="search-input" placeholder="Search servers...">
+          <div class="search-row">
+            <input type="text" id="serverSearchInput" class="search-input" placeholder="Search servers...">
+            <button type="button" id="privacyToggle" class="privacy-toggle" title="Privacy mode" aria-label="Toggle privacy mode" aria-pressed="false">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                <circle cx="12" cy="12" r="2.8" stroke="currentColor" stroke-width="1.8"/>
+              </svg>
+            </button>
+          </div>
+          <div class="tag-filter" id="tagFilter" aria-label="Server tags"></div>
           <div class="select-options" id="selectOptions">
             <!-- Dynamic options -->
           </div>
@@ -168,6 +308,25 @@
   </div>
   <div id="statusBar" class="status-bar" style="display:none;"></div>
   <div id="main"></div>
+
+  <!-- Feedback & Support Section -->
+  <div class="feedback-section" id="feedbackSection">
+    <div class="feedback-title" id="feedbackTitle">💡 Feedback & Support</div>
+    <div class="feedback-pills">
+      <a class="feedback-pill" id="feedbackBugBtn" href="#" title="Report a bug or request a feature">
+        <span class="pill-icon">🐛</span>
+        <span id="feedbackBugText">Report Bug / Feature</span>
+      </a>
+      <a class="feedback-pill" id="feedbackForumBtn" href="#" title="Discuss on LowEndTalk forum">
+        <span class="pill-icon">💬</span>
+        <span id="feedbackForumText">Discuss on Forum</span>
+      </a>
+      <a class="feedback-pill" id="feedbackEmailBtn" href="#" title="Email the developer">
+        <span class="pill-icon">✉️</span>
+        <span id="feedbackEmailText">Email Developer</span>
+      </a>
+    </div>
+  </div>
 
   <script src="i18n.js"></script>
   <script src="popup.js"></script>
