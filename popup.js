@@ -31,7 +31,13 @@ function formatResource(val) {
   const parts = val.split(',');
   if (parts.length < 4) return val;
   const [total, used, free, percent] = parts;
-  return `${formatSize(used)} / ${formatSize(total)} (${percent}%)`;
+  const totalVal = parseFloat(total);
+  const usedVal = parseFloat(used);
+  if (isNaN(totalVal) || totalVal === 0) return 'N/A';
+  if (usedVal === 0) {
+    return formatSize(totalVal);
+  }
+  return `${formatSize(usedVal)} / ${formatSize(totalVal)} (${percent}%)`;
 }
 
 // Send message to background service worker (Promise-based, with safety net)
