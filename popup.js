@@ -477,6 +477,7 @@ function renderServerInfo(status, info, t, main) {
   t = t || window.t;
   main = main || $('main');
   if (!main) return;
+  console.log('[DEBUG] renderServerInfo: status =', status, 'info =', info);
   const isOnline = status.statusmsg === 'online' || status.vmstate === 'online' || status.status === 'online' || status.vmstate === 'running';
 
   main.innerHTML = `

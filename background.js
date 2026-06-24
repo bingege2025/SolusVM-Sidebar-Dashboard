@@ -135,7 +135,9 @@ async function callSolusVM(command, extraParams = {}) {
   }
   
   const text = await response.text();
+  console.log(`[DEBUG] Raw response for action ${command}:`, text);
   const result = parseApiResponse(text);
+  console.log(`[DEBUG] Parsed result for action ${command}:`, result);
   if (result.status && result.status !== 'success') {
     throw new Error(result.statusmsg || 'Operation failed');
   }
