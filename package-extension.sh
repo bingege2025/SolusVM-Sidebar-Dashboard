@@ -21,6 +21,7 @@ zip -r "$OUTPUT" . \
   -x ".DS_Store" \
   -x "Thumbs.db" \
   -x "*.sh" \
+  -x "*.zip" \
   -x ".gitignore"
 
 if [ -f "$OUTPUT" ]; then
