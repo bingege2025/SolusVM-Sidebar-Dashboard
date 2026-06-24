@@ -3,19 +3,56 @@
  * Handles all SolusVM API calls
  */
 
+function normalizeTagList(value) {
+  const rawTags = Array.isArray(value)
+    ? value
+    : String(value || '').split(/[\s,，]+/);
+
+  const seen = new Set();
+  return rawTags
+    .map(tag => String(tag).trim())
+    .filter(Boolean)
+    .filter(tag => {
+      const key = tag.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+}
+
+function getAllTagsFromServers(list) {
+  const seen = new Map();
+  list.forEach(server => {
+    normalizeTagList(server.tags).forEach(tag => {
+      const key = tag.toLowerCase();
+      if (!seen.has(key)) seen.set(key, tag);
+    });
+  });
+  return Array.from(seen.values()).sort((a, b) => a.localeCompare(b));
+}
+
+function normalizeServers(list) {
+  return (Array.isArray(list) ? list : []).map(server => ({
+    ...server,
+    tags: normalizeTagList(server.tags)
+  }));
+}
+
 // Check and migrate legacy data structures
 function checkAndMigrateConfig(callback) {
-  chrome.storage.local.get(['apiUrl', 'apiKey', 'apiHash', 'servers'], data => {
+  chrome.storage.local.get(['apiUrl', 'apiKey', 'apiHash', 'servers', 'tags'], data => {
     if (!data.servers && data.apiUrl && data.apiKey && data.apiHash) {
       const defaultServer = {
         id: 'server_' + Date.now(),
         name: 'Default Server',
         apiUrl: data.apiUrl,
         apiKey: data.apiKey,
-        apiHash: data.apiHash
+        apiHash: data.apiHash,
+        tags: []
       };
       chrome.storage.local.set({
         servers: [defaultServer],
+        tags: [],
         currentServerId: defaultServer.id
       }, () => {
         chrome.storage.local.remove(['apiUrl', 'apiKey', 'apiHash'], () => {
@@ -23,7 +60,18 @@ function checkAndMigrateConfig(callback) {
         });
       });
     } else {
-      if (callback) callback();
+      const normalizedServers = normalizeServers(data.servers);
+      const normalizedTags = getAllTagsFromServers(normalizedServers);
+      if (JSON.stringify(data.servers || []) !== JSON.stringify(normalizedServers) || JSON.stringify(data.tags || []) !== JSON.stringify(normalizedTags)) {
+        chrome.storage.local.set({
+          servers: normalizedServers,
+          tags: normalizedTags
+        }, () => {
+          if (callback) callback();
+        });
+      } else if (callback) {
+        callback();
+      }
     }
   });
 }

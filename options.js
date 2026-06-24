@@ -5,6 +5,7 @@ const $ = id => document.getElementById(id);
 let servers = [];
 let editingServerId = null;
 let defaultServerId = null;
+let allTags = [];
 
 const t = window.t;
 
@@ -34,6 +35,50 @@ function hideMsg() {
   }
 }
 
+function normalizeTagList(value) {
+  const rawTags = Array.isArray(value)
+    ? value
+    : String(value || '').split(/[\s,，]+/);
+
+  const seen = new Set();
+  return rawTags
+    .map(tag => String(tag).trim())
+    .filter(Boolean)
+    .filter(tag => {
+      const key = tag.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+}
+
+function getAllTagsFromServers(list) {
+  const seen = new Map();
+  list.forEach(server => {
+    normalizeTagList(server.tags).forEach(tag => {
+      const key = tag.toLowerCase();
+      if (!seen.has(key)) seen.set(key, tag);
+    });
+  });
+  return Array.from(seen.values()).sort((a, b) => a.localeCompare(b));
+}
+
+function normalizeServer(server) {
+  return {
+    ...server,
+    tags: normalizeTagList(server.tags)
+  };
+}
+
+function persistServers(nextServers, currentServerId, callback) {
+  allTags = getAllTagsFromServers(nextServers);
+  chrome.storage.local.set({
+    servers: nextServers,
+    tags: allTags,
+    currentServerId
+  }, callback);
+}
+
 // Apply internationalization translations
 function applyTranslations() {
   $('i18n_title').textContent = t('title');
@@ -46,6 +91,8 @@ function applyTranslations() {
   $('i18n_hintKey').textContent = t('hintKey');
   $('i18n_labelHash').textContent = t('labelHash');
   $('i18n_hintHash').textContent = t('hintHash');
+  $('i18n_labelTags').textContent = t('labelTags');
+  $('i18n_hintTags').textContent = t('hintTags');
   
   $('saveBtn').textContent = t('btnSave');
   $('testBtn').textContent = t('btnTest');
@@ -55,6 +102,7 @@ function applyTranslations() {
   $('apiUrl').placeholder = t('placeholderUrl');
   $('apiKey').placeholder = t('placeholderKey');
   $('apiHash').placeholder = t('placeholderHash');
+  $('serverTags').placeholder = t('placeholderTags');
   
   // Form title
   if (editingServerId) {
@@ -93,6 +141,11 @@ function renderServerList() {
             ${isDefault ? `<span class="badge-default">${t('badgeDefault')}</span>` : ''}
           </div>
           <span class="server-host">${escapeHtml(host)}</span>
+          ${s.tags && s.tags.length ? `
+            <div class="server-tags">
+              ${s.tags.slice(0, 4).map(tag => `<span class="server-tag">${escapeHtml(tag)}</span>`).join('')}
+            </div>
+          ` : ''}
         </div>
         <div class="server-actions">
           <button class="btn-icon star ${isDefault ? 'active' : ''}" data-id="${s.id}" title="${t('tagDefault')}">${isDefault ? '★' : '☆'}</button>
@@ -144,6 +197,7 @@ function selectServer(id) {
     $('apiUrl').value = s.apiUrl;
     $('apiKey').value = s.apiKey;
     $('apiHash').value = s.apiHash;
+    $('serverTags').value = normalizeTagList(s.tags).join(', ');
     
     document.querySelectorAll('.server-item').forEach(el => {
       el.classList.toggle('active', el.dataset.id === id);
@@ -160,6 +214,7 @@ function showNewForm() {
   $('apiUrl').value = '';
   $('apiKey').value = '';
   $('apiHash').value = '';
+  $('serverTags').value = '';
   
   document.querySelectorAll('.server-item').forEach(el => {
     el.classList.remove('active');
@@ -170,7 +225,7 @@ function showNewForm() {
 // Load configuration and migrate from legacy versions
 function loadConfig() {
   try {
-    chrome.storage.local.get(['servers', 'currentServerId', 'defaultServerId', 'apiUrl', 'apiKey', 'apiHash', 'lang'], data => {
+    chrome.storage.local.get(['servers', 'currentServerId', 'defaultServerId', 'apiUrl', 'apiKey', 'apiHash', 'tags', 'lang'], data => {
       if (chrome.runtime.lastError) console.error(chrome.runtime.lastError);
       data = data || {};
       let list = data.servers || [];
@@ -182,15 +237,23 @@ function loadConfig() {
           name: 'Default Server',
           apiUrl: data.apiUrl,
           apiKey: data.apiKey,
-          apiHash: data.apiHash
+          apiHash: data.apiHash,
+          tags: []
         };
         list = [oldServer];
         chrome.storage.local.set({
           servers: list,
+          tags: [],
           currentServerId: oldServer.id
         }, () => {
           chrome.storage.local.remove(['apiUrl', 'apiKey', 'apiHash']);
         });
+      }
+
+      const normalizedList = list.map(normalizeServer);
+      const nextTags = getAllTagsFromServers(normalizedList);
+      if (JSON.stringify(list) !== JSON.stringify(normalizedList) || JSON.stringify(data.tags || []) !== JSON.stringify(nextTags)) {
+        chrome.storage.local.set({ servers: normalizedList, tags: nextTags });
       }
       
       // Initialize language
@@ -201,7 +264,8 @@ function loadConfig() {
       }
       $('languageSelect').value = window.currentLang;
       
-      servers = list;
+      servers = normalizedList;
+      allTags = nextTags;
       defaultServerId = data.defaultServerId || null;
       
       applyTranslations();
@@ -224,6 +288,7 @@ function saveServer() {
   const apiUrl = $('apiUrl').value.trim();
   const apiKey = $('apiKey').value.trim();
   const apiHash = $('apiHash').value.trim();
+  const tags = normalizeTagList($('serverTags').value);
   
   if (!name || !apiUrl || !apiKey || !apiHash) {
     showMsg(t('msgRequired'), false);
@@ -236,7 +301,8 @@ function saveServer() {
     name,
     apiUrl: cleanedUrl,
     apiKey,
-    apiHash
+    apiHash,
+    tags
   };
   
   try {
@@ -261,10 +327,7 @@ function saveServer() {
         currentId = newId;
       }
       
-      chrome.storage.local.set({
-        servers,
-        currentServerId: currentId
-      }, () => {
+      persistServers(servers, currentId, () => {
         renderServerList();
         selectServer(editingServerId);
         showMsg(t(isEditing ? 'msgSaved' : 'msgAdded'), true);
@@ -292,11 +355,17 @@ function deleteServer(id) {
       if (currentId === id) {
         currentId = servers[0] ? servers[0].id : null;
       }
+      if (defaultServerId === id) {
+        defaultServerId = null;
+      }
       
       chrome.storage.local.remove('cache_' + id, () => {
+        allTags = getAllTagsFromServers(servers);
         chrome.storage.local.set({
           servers,
-          currentServerId: currentId
+          tags: allTags,
+          currentServerId: currentId,
+          defaultServerId
         }, () => {
           if (editingServerId === id || servers.length === 0) {
             if (servers.length > 0) {

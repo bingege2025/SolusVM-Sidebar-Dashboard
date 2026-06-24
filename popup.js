@@ -1,6 +1,7 @@
 // Popup page logic — fully synchronous init, no async/await
 
 const $ = id => document.getElementById(id);
+let privacyModeEnabled = false;
 
 // Global exception handlers
 window.onerror = function(message, source, lineno, colno, error) {
@@ -87,6 +88,73 @@ function safeStorageGet(keys, callback, timeoutMs) {
   }
 }
 
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#039;');
+}
+
+function normalizeTagList(value) {
+  const rawTags = Array.isArray(value)
+    ? value
+    : String(value || '').split(/[\s,，]+/);
+
+  const seen = new Set();
+  return rawTags
+    .map(tag => String(tag).trim())
+    .filter(Boolean)
+    .filter(tag => {
+      const key = tag.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+}
+
+function normalizeServers(list) {
+  return (Array.isArray(list) ? list : []).map(server => ({
+    ...server,
+    tags: normalizeTagList(server.tags)
+  }));
+}
+
+function getAllTagsFromServers(list) {
+  const seen = new Map();
+  list.forEach(server => {
+    normalizeTagList(server.tags).forEach(tag => {
+      const key = tag.toLowerCase();
+      if (!seen.has(key)) seen.set(key, tag);
+    });
+  });
+  return Array.from(seen.values()).sort((a, b) => a.localeCompare(b));
+}
+
+function updatePrivacyToggle() {
+  const btn = $('privacyToggle');
+  if (!btn) return;
+  btn.classList.toggle('active', privacyModeEnabled);
+  btn.setAttribute('aria-pressed', String(privacyModeEnabled));
+  btn.title = privacyModeEnabled ? 'Privacy mode on' : 'Privacy mode off';
+}
+
+function applyPrivacyMode() {
+  document.querySelectorAll('.privacy-field').forEach(el => {
+    el.classList.toggle('blur-text', privacyModeEnabled);
+  });
+  updatePrivacyToggle();
+}
+
+function setPrivacyMode(enabled, persist) {
+  privacyModeEnabled = Boolean(enabled);
+  applyPrivacyMode();
+  if (persist) {
+    chrome.storage.local.set({ privacyModeEnabled });
+  }
+}
+
 // ---- UI binding ----
 
 const settingsBtn = $('settingsBtn');
@@ -94,6 +162,53 @@ if (settingsBtn) {
   settingsBtn.addEventListener('click', e => {
     e.preventDefault();
     chrome.runtime.openOptionsPage();
+  });
+}
+
+// ---- Feedback section binding ----
+
+const GITHUB_ISSUES_URL = 'https://github.com/bingege2025/SolusVM-Sidebar-Dashboard/issues';
+const FORUM_URL = 'https://lowendtalk.com/discussion/YOUR_THREAD_ID';  // TODO: 替换为你的 LowEndTalk 帖子链接
+const DEV_EMAIL = 'your-email@example.com';  // TODO: 替换为你的邮箱地址
+
+function initFeedbackSection() {
+  const t = window.t;
+  // 更新国际化文本
+  const feedbackTitle = $('feedbackTitle');
+  const feedbackBugText = $('feedbackBugText');
+  const feedbackForumText = $('feedbackForumText');
+  const feedbackEmailText = $('feedbackEmailText');
+  if (feedbackTitle) feedbackTitle.textContent = t('feedbackTitle');
+  if (feedbackBugText) feedbackBugText.textContent = t('feedbackBug');
+  if (feedbackForumText) feedbackForumText.textContent = t('feedbackForum');
+  if (feedbackEmailText) feedbackEmailText.textContent = t('feedbackEmail');
+}
+
+// 绑定反馈按钮点击事件
+const feedbackBugBtn = $('feedbackBugBtn');
+if (feedbackBugBtn) {
+  feedbackBugBtn.addEventListener('click', e => {
+    e.preventDefault();
+    chrome.tabs.create({ url: GITHUB_ISSUES_URL });
+  });
+}
+
+const feedbackForumBtn = $('feedbackForumBtn');
+if (feedbackForumBtn) {
+  feedbackForumBtn.addEventListener('click', e => {
+    e.preventDefault();
+    chrome.tabs.create({ url: FORUM_URL });
+  });
+}
+
+const feedbackEmailBtn = $('feedbackEmailBtn');
+if (feedbackEmailBtn) {
+  feedbackEmailBtn.addEventListener('click', e => {
+    e.preventDefault();
+    const version = chrome.runtime.getManifest().version;
+    const subject = encodeURIComponent(`SolusVM Extension v${version} - Feedback`);
+    const body = encodeURIComponent(`\n\n---\nExtension Version: v${version}\nBrowser: ${navigator.userAgent}\nTimestamp: ${new Date().toISOString()}`);
+    chrome.tabs.create({ url: `mailto:${DEV_EMAIL}?subject=${subject}&body=${body}` });
   });
 }
 
@@ -110,6 +225,8 @@ if (settingsBtn) {
     window.initI18n(() => {
       // Update settings button title once language is loaded
       if (settingsBtn) settingsBtn.title = window.t('settings');
+      // 更新反馈区域国际化文本
+      initFeedbackSection();
     });
   }
 
@@ -118,7 +235,7 @@ if (settingsBtn) {
   const t = window.t;
 
   // Step 2: Load servers from storage (with timeout protection)
-  safeStorageGet(['servers', 'currentServerId', 'defaultServerId'], data => {
+  safeStorageGet(['servers', 'currentServerId', 'defaultServerId', 'tags', 'privacyModeEnabled'], data => {
     if (!data) {
       // Storage timed out or errored — show retry prompt
       main.innerHTML = `
@@ -129,6 +246,13 @@ if (settingsBtn) {
       const retryLink = $('retryLink');
       if (retryLink) retryLink.addEventListener('click', e => { e.preventDefault(); init(); });
       return;
+    }
+
+    data.servers = normalizeServers(data.servers);
+    privacyModeEnabled = Boolean(data.privacyModeEnabled);
+    const allTags = getAllTagsFromServers(data.servers);
+    if (JSON.stringify(data.tags || []) !== JSON.stringify(allTags)) {
+      chrome.storage.local.set({ servers: data.servers, tags: allTags });
     }
 
     if (!data.servers || data.servers.length === 0) {
@@ -162,19 +286,54 @@ if (settingsBtn) {
     const selectedServerName = $('selectedServerName');
     const selectDropdown = $('selectDropdown');
     const serverSearchInput = $('serverSearchInput');
+    const privacyToggle = $('privacyToggle');
+    const tagFilter = $('tagFilter');
     const selectOptions = $('selectOptions');
 
     if (customSelect && selectTrigger && selectedServerName && selectDropdown && serverSearchInput && selectOptions) {
       serverSearchInput.placeholder = t('searchPlaceholder') || 'Search servers...';
+      let activeTag = '';
+
+      const renderTagFilter = () => {
+        if (!tagFilter) return;
+        const tagsMarkup = [
+          `<button type="button" class="tag-pill ${activeTag === '' ? 'active' : ''}" data-tag="">${escapeHtml(t('allTags') || 'All')}</button>`,
+          ...allTags.map(tag => (
+            `<button type="button" class="tag-pill ${tag.toLowerCase() === activeTag.toLowerCase() ? 'active' : ''}" data-tag="${escapeHtml(tag)}" title="${escapeHtml(tag)}">${escapeHtml(tag)}</button>`
+          ))
+        ].join('');
+
+        tagFilter.innerHTML = tagsMarkup;
+        tagFilter.querySelectorAll('.tag-pill').forEach(pill => {
+          pill.addEventListener('click', e => {
+            e.stopPropagation();
+            activeTag = pill.dataset.tag || '';
+            renderTagFilter();
+            renderOptions(serverSearchInput.value);
+          });
+        });
+      };
       
       const renderOptions = (query) => {
-        const filtered = data.servers.filter(s => s.name.toLowerCase().includes(query.toLowerCase()));
+        const normalizedQuery = query.trim().toLowerCase();
+        const normalizedTag = activeTag.toLowerCase();
+        const filtered = data.servers.filter(s => {
+          const searchableText = [
+            s.name,
+            s.apiUrl,
+            s.apiKey,
+            ...(s.tags || [])
+          ].filter(Boolean).join(' ').toLowerCase();
+          const matchesSearch = !normalizedQuery || searchableText.includes(normalizedQuery);
+          const matchesTag = !normalizedTag || (s.tags || []).some(tag => tag.toLowerCase() === normalizedTag);
+          return matchesSearch && matchesTag;
+        });
         if (filtered.length === 0) {
-          selectOptions.innerHTML = `<div class="select-option no-results">${t('noServers')}</div>`;
+          selectOptions.innerHTML = `<div class="select-option no-results">${t('noTagMatches') || t('noServers')}</div>`;
           return;
         }
         selectOptions.innerHTML = filtered.map(s => 
-          `<div class="select-option ${s.id === activeId ? 'selected' : ''}" data-id="${s.id}">${s.name}</div>`
+          `<div class="select-option ${s.id === activeId ? 'selected' : ''}" data-id="${escapeHtml(s.id)}">${escapeHtml(s.name)}</div>`
         ).join('');
 
         const optionNodes = selectOptions.querySelectorAll('.select-option:not(.no-results)');
@@ -196,6 +355,7 @@ if (settingsBtn) {
 
       const activeServer = data.servers.find(s => s.id === activeId);
       selectedServerName.textContent = activeServer ? activeServer.name : (t('noServers'));
+      renderTagFilter();
       renderOptions('');
 
       if (!selectTrigger.dataset.listenerBound) {
@@ -222,6 +382,17 @@ if (settingsBtn) {
         serverSearchInput.addEventListener('click', e => e.stopPropagation());
         serverSearchInput.dataset.listenerBound = 'true';
       }
+
+      if (privacyToggle && !privacyToggle.dataset.listenerBound) {
+        privacyToggle.addEventListener('click', e => {
+          e.preventDefault();
+          e.stopPropagation();
+          setPrivacyMode(!privacyModeEnabled, true);
+        });
+        privacyToggle.dataset.listenerBound = 'true';
+      }
+
+      applyPrivacyMode();
 
       if (!window.clickOutsideListenerBound) {
         document.addEventListener('click', () => {
@@ -315,13 +486,13 @@ function renderServerInfo(status, info, t, main) {
     <div class="content">
       <div class="info-grid">
         <span class="label">${t('hostname')}</span>
-        <span class="value">${info.hostname || '-'}</span>
+        <span class="value privacy-field">${escapeHtml(info.hostname || '-')}</span>
         <span class="label">${t('status')}</span>
         <span class="value"><span class="status-badge ${isOnline ? 'online' : 'offline'}">${isOnline ? t('online') : t('offline')}</span></span>
         <span class="label">${t('ip')}</span>
-        <span class="value">${info.ipaddress || status.ip || '-'}</span>
+        <span class="value privacy-field">${escapeHtml(info.ipaddress || status.ip || '-')}</span>
         <span class="label">${t('os')}</span>
-        <span class="value">${info.os || '-'}</span>
+        <span class="value">${escapeHtml(info.os || '-')}</span>
         <span class="label">${t('mem')}</span>
         <span class="value">${formatResource(info.mem)}</span>
         <span class="label">${t('hdd')}</span>
@@ -338,6 +509,8 @@ function renderServerInfo(status, info, t, main) {
         }
       </div>
     </div>`;
+
+  applyPrivacyMode();
 
   $('refreshBtn').addEventListener('click', () => refreshInfo(t, main, $('statusBar'), true));
   $('rebootBtn').addEventListener('click', () => doAction('reboot', t('reboot'), t, main));

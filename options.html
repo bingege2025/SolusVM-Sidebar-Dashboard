@@ -46,6 +46,19 @@
     .server-title-container { display: flex; align-items: center; }
     .server-name { font-size: 13px; font-weight: 600; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .server-host { font-size: 11px; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .server-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+    .server-tag {
+      max-width: 88px;
+      padding: 2px 6px;
+      border-radius: 999px;
+      background: #edf2f7;
+      color: #44546a;
+      font-size: 10px;
+      line-height: 1.2;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
     
     .badge-default {
       background: #ffb300;
@@ -132,6 +145,12 @@
         <label id="i18n_labelHash">API Hash</label>
         <input type="text" id="apiHash" placeholder="Enter API Hash">
         <div id="i18n_hintHash" class="hint">Generate in SolusVM Panel → API tab</div>
+      </div>
+
+      <div class="form-group">
+        <label id="i18n_labelTags">Tags</label>
+        <input type="text" id="serverTags" placeholder="RN, LA, Production">
+        <div id="i18n_hintTags" class="hint">Separate tags with commas or spaces</div>
       </div>
       
       <div class="form-actions">
