@@ -168,8 +168,8 @@ if (settingsBtn) {
 // ---- Feedback section binding ----
 
 const GITHUB_ISSUES_URL = 'https://github.com/bingege2025/SolusVM-Sidebar-Dashboard/issues';
-const FORUM_URL = 'https://lowendtalk.com/discussion/YOUR_THREAD_ID';  // TODO: 替换为你的 LowEndTalk 帖子链接
-const DEV_EMAIL = 'your-email@example.com';  // TODO: 替换为你的邮箱地址
+const FORUM_URL = 'https://lowendtalk.com/discussion/217453/idea-discussion-a-minimalist-chrome-sidepanel-dashboard-for-managing-multi-solusvm-racknerd-apis#latest';
+const DEV_EMAIL = 'renyanbin.wang@gmail.com';
 
 function initFeedbackSection() {
   const t = window.t;
