@@ -173,12 +173,9 @@ const DEV_EMAIL = 'renyanbin.wang@gmail.com';
 
 function initFeedbackSection() {
   const t = window.t;
-  // 更新国际化文本
-  const feedbackTitle = $('feedbackTitle');
   const feedbackBugText = $('feedbackBugText');
   const feedbackForumText = $('feedbackForumText');
   const feedbackEmailText = $('feedbackEmailText');
-  if (feedbackTitle) feedbackTitle.textContent = t('feedbackTitle');
   if (feedbackBugText) feedbackBugText.textContent = t('feedbackBug');
   if (feedbackForumText) feedbackForumText.textContent = t('feedbackForum');
   if (feedbackEmailText) feedbackEmailText.textContent = t('feedbackEmail');
@@ -492,7 +489,7 @@ function renderServerInfo(status, info, t, main) {
         <span class="label">${t('ip')}</span>
         <span class="value privacy-field">${escapeHtml(info.ipaddress || status.ip || '-')}</span>
         <span class="label">${t('os')}</span>
-        <span class="value">${escapeHtml(info.os || '-')}</span>
+        <span class="value">${escapeHtml(info.os || info.template || '-')}</span>
         <span class="label">${t('mem')}</span>
         <span class="value">${formatResource(info.mem)}</span>
         <span class="label">${t('hdd')}</span>

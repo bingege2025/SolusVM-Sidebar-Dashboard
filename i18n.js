@@ -35,10 +35,9 @@ window.i18nDict = {
     searchPlaceholder: "搜索服务器...",
     allTags: "全部",
     noTagMatches: "没有匹配服务器",
-    feedbackTitle: "💡 反馈与支持",
-    feedbackBug: "🐛 报 Bug / 提需求",
-    feedbackForum: "💬 论坛讨论",
-    feedbackEmail: "✉️ 邮件联系",
+    feedbackBug: "反馈/提需求",
+    feedbackForum: "论坛讨论",
+    feedbackEmail: "邮件联系",
     
     // Options keys
     title: "⚙️ RackNerd API 配置中心",
@@ -108,10 +107,9 @@ window.i18nDict = {
     searchPlaceholder: "Search servers...",
     allTags: "All",
     noTagMatches: "No matching servers",
-    feedbackTitle: "💡 Feedback & Support",
-    feedbackBug: "🐛 Report Bug / Feature",
-    feedbackForum: "💬 Discuss on Forum",
-    feedbackEmail: "✉️ Email Developer",
+    feedbackBug: "Feedback",
+    feedbackForum: "Forum",
+    feedbackEmail: "Email",
     
     // Options keys
     title: "⚙️ RackNerd Config Center",

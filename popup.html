@@ -226,55 +226,31 @@
       background: transparent !important;
     }
 
-    /* ---- Feedback Section ---- */
-    .feedback-section {
-      padding: 10px 16px 14px;
-      border-top: 1px solid #e8ecf1;
-      background: linear-gradient(180deg, #f8f9fb 0%, #f1f3f7 100%);
-    }
-    .feedback-title {
-      font-size: 11px;
-      font-weight: 600;
-      color: #8a94a6;
-      letter-spacing: 0.3px;
-      text-transform: uppercase;
-      margin-bottom: 8px;
-    }
-    .feedback-pills {
+    /* ---- Feedback Footer ---- */
+    .feedback-footer {
+      padding: 8px 16px;
+      border-top: 1px solid #edf2f7;
+      background: #f7fafc;
       display: flex;
-      gap: 6px;
-      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      font-size: 11px;
     }
-    .feedback-pill {
+    .feedback-footer a {
+      color: #718096;
+      text-decoration: none;
       display: inline-flex;
       align-items: center;
       gap: 4px;
-      padding: 5px 10px;
-      border: 1px solid #dde2ea;
-      border-radius: 999px;
-      background: white;
-      color: #4a5568;
-      font-size: 11px;
-      font-weight: 500;
-      text-decoration: none;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      white-space: nowrap;
+      transition: color 0.15s ease;
     }
-    .feedback-pill:hover {
-      border-color: #4a90d9;
-      color: #2a6cb8;
-      background: #eef4fc;
-      box-shadow: 0 1px 3px rgba(74, 144, 217, 0.15);
-      transform: translateY(-1px);
+    .feedback-footer a:hover {
+      color: #4a90d9;
     }
-    .feedback-pill:active {
-      transform: translateY(0);
-      box-shadow: none;
-    }
-    .feedback-pill .pill-icon {
-      font-size: 12px;
-      line-height: 1;
+    .feedback-footer .divider {
+      color: #cbd5e0;
+      user-select: none;
     }
   </style>
 </head>
@@ -309,23 +285,22 @@
   <div id="statusBar" class="status-bar" style="display:none;"></div>
   <div id="main"></div>
 
-  <!-- Feedback & Support Section -->
-  <div class="feedback-section" id="feedbackSection">
-    <div class="feedback-title" id="feedbackTitle">💡 Feedback & Support</div>
-    <div class="feedback-pills">
-      <a class="feedback-pill" id="feedbackBugBtn" href="#" title="Report a bug or request a feature">
-        <span class="pill-icon">🐛</span>
-        <span id="feedbackBugText">Report Bug / Feature</span>
-      </a>
-      <a class="feedback-pill" id="feedbackForumBtn" href="#" title="Discuss on LowEndTalk forum">
-        <span class="pill-icon">💬</span>
-        <span id="feedbackForumText">Discuss on Forum</span>
-      </a>
-      <a class="feedback-pill" id="feedbackEmailBtn" href="#" title="Email the developer">
-        <span class="pill-icon">✉️</span>
-        <span id="feedbackEmailText">Email Developer</span>
-      </a>
-    </div>
+  <!-- Feedback & Support Footer -->
+  <div class="feedback-footer" id="feedbackSection">
+    <a id="feedbackBugBtn" href="#" title="Report a bug or request a feature">
+      <span>🐛</span>
+      <span id="feedbackBugText">Report Bug / Feature</span>
+    </a>
+    <span class="divider">•</span>
+    <a id="feedbackForumBtn" href="#" title="Discuss on LowEndTalk forum">
+      <span>💬</span>
+      <span id="feedbackForumText">Discuss on Forum</span>
+    </a>
+    <span class="divider">•</span>
+    <a id="feedbackEmailBtn" href="#" title="Email the developer">
+      <span>✉️</span>
+      <span id="feedbackEmailText">Email Developer</span>
+    </a>
   </div>
 
   <script src="i18n.js"></script>

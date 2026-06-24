@@ -176,7 +176,7 @@ async function listServers() {
 
 // Get server details
 async function getServerInfo() {
-  return await callSolusVM('info', { status: 'true', bw: 'true' });
+  return await callSolusVM('info', { status: 'true', bw: 'true', hdd: 'true', mem: 'true', ipaddr: 'true' });
 }
 
 // Get server status
