@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "RackNerd Server Manager",
-  "version": "1.1.0",
-  "description": "Manage RackNerd servers - view status, reboot, and shutdown.",
+  "name": "SolusVM VPS Dashboard",
+  "version": "1.2.0",
+  "description": "A lightweight, 100% private, universal sidebar monitor for any VPS provider running SolusVM panel. View status, reboot, shutdown, and manage multiple servers — all without leaving your browser.",
   "permissions": ["storage"],
   "host_permissions": ["https://*/*"],
   "action": {

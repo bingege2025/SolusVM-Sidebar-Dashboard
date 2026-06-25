@@ -1,6 +1,6 @@
-# RackNerd Server Manager - Chrome Extension
+# SolusVM VPS Dashboard - Chrome Extension
 
-A Chrome Extension for managing RackNerd VPS instances (MVP).
+A Chrome Extension for managing VPS instances on SolusVM panels.
 
 ## Features
 
@@ -17,15 +17,14 @@ A Chrome Extension for managing RackNerd VPS instances (MVP).
 2. Toggle on "Developer mode" in the top right corner.
 3. Click "Load unpacked" and select this project directory.
 4. Click the extension icon → ⚙️ to enter settings.
-5. Fill in your SolusVM API credentials (obtained from RackNerd Client Portal).
+5. Fill in your SolusVM API credentials from your VPS provider's SolusVM panel.
 
 ## How to Get API Info
 
-1. Log in to [RackNerd Client Portal](https://my.racknerd.com)
-2. Go to Services → Select your VPS.
-3. Click SolusVM Panel to enter the panel dashboard.
-4. Go to the API tab to retrieve your **API Key** and **API Hash**.
-5. API URL format: `https://xxx.racknerd.com:5656` (extracted from panel URL).
+1. Log in to your VPS provider's client portal or SolusVM panel.
+2. Open the target VPS and enter its SolusVM panel.
+3. Go to the API tab to retrieve your **API Key** and **API Hash**.
+4. Copy the full API endpoint, for example: `https://panel.example.com/api/client/command.php`.
 
 ## Technical Overview
 

@@ -1,4 +1,4 @@
-# Privacy Policy for RackNerd Server Manager / 隐私政策
+# Privacy Policy for SolusVM VPS Dashboard / 隐私政策
 
 **Last updated / 最近更新日期:** 2026-05-30
 
@@ -8,7 +8,7 @@ English | [简体中文](#简体中文)
 
 ## English
 
-This Privacy Policy describes how the **RackNerd Server Manager** extension (referred to as "the Extension") handles user information.
+This Privacy Policy describes how the **SolusVM VPS Dashboard** extension (referred to as "the Extension") handles user information.
 
 ### 1. What Data We Collect
 The Extension **does not collect, store, or transmit any personal data, telemetry, or browsing history** to any third parties or remote servers. 
@@ -32,7 +32,7 @@ If you have any questions or feedback regarding this Privacy Policy, please open
 
 ## 简体中文
 
-本隐私政策描述了 **RackNerd Server Manager** 浏览器扩展（以下简称“本扩展”）如何处理用户信息。
+本隐私政策描述了 **SolusVM VPS Dashboard** 浏览器扩展（以下简称“本扩展”）如何处理用户信息。
 
 ### 1. 收集的数据
 本扩展**不收集、不存储、也不向任何第三方或远程服务器传输您的个人数据、遥测数据或浏览历史**。

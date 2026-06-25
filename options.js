@@ -1,4 +1,4 @@
-// Options page logic
+// Options page logic — Multi-Panel Driver ready
 
 const $ = id => document.getElementById(id);
 
@@ -24,7 +24,7 @@ function showMsg(text, ok) {
   if (el) {
     el.textContent = text;
     el.className = 'msg ' + (ok ? 'ok' : 'err');
-    el.style.display = 'block'; // Override inline display: none style
+    el.style.display = 'block';
   }
 }
 
@@ -39,7 +39,6 @@ function normalizeTagList(value) {
   const rawTags = Array.isArray(value)
     ? value
     : String(value || '').split(/[\s,，]+/);
-
   const seen = new Set();
   return rawTags
     .map(tag => String(tag).trim())
@@ -63,13 +62,6 @@ function getAllTagsFromServers(list) {
   return Array.from(seen.values()).sort((a, b) => a.localeCompare(b));
 }
 
-function normalizeServer(server) {
-  return {
-    ...server,
-    tags: normalizeTagList(server.tags)
-  };
-}
-
 function persistServers(nextServers, currentServerId, callback) {
   allTags = getAllTagsFromServers(nextServers);
   chrome.storage.local.set({
@@ -85,6 +77,8 @@ function applyTranslations() {
   $('addBtn').textContent = t('btnAdd');
   $('i18n_labelName').textContent = t('labelName');
   $('i18n_hintName').textContent = t('hintName');
+  $('i18n_labelPanelType').textContent = t('labelPanelType');
+  $('i18n_hintPanelType').textContent = t('hintPanelType');
   $('i18n_labelUrl').textContent = t('labelUrl');
   $('i18n_hintUrl').textContent = t('hintUrl');
   $('i18n_labelKey').textContent = t('labelKey');
@@ -132,6 +126,7 @@ function renderServerList() {
     
     const isActive = s.id === editingServerId;
     const isDefault = s.id === defaultServerId;
+    const panelLabel = (s.panel_type || 'solusvm').toUpperCase();
     
     return `
       <div class="server-item ${isActive ? 'active' : ''}" data-id="${s.id}">
@@ -140,12 +135,7 @@ function renderServerList() {
             <span class="server-name">${escapeHtml(s.name)}</span>
             ${isDefault ? `<span class="badge-default">${t('badgeDefault')}</span>` : ''}
           </div>
-          <span class="server-host">${escapeHtml(host)}</span>
-          ${s.tags && s.tags.length ? `
-            <div class="server-tags">
-              ${s.tags.slice(0, 4).map(tag => `<span class="server-tag">${escapeHtml(tag)}</span>`).join('')}
-            </div>
-          ` : ''}
+          <span class="server-host">${escapeHtml(host)} · ${escapeHtml(panelLabel)}</span>
         </div>
         <div class="server-actions">
           <button class="btn-icon star ${isDefault ? 'active' : ''}" data-id="${s.id}" title="${t('tagDefault')}">${isDefault ? '★' : '☆'}</button>
@@ -178,7 +168,6 @@ function renderServerList() {
       const serverId = el.dataset.id;
       const newDefaultId = defaultServerId === serverId ? null : serverId;
       
-      // Use callbacks to avoid UI freezes
       chrome.storage.local.set({ defaultServerId: newDefaultId }, () => {
         defaultServerId = newDefaultId;
         renderServerList();
@@ -197,6 +186,8 @@ function selectServer(id) {
     $('apiUrl').value = s.apiUrl;
     $('apiKey').value = s.apiKey;
     $('apiHash').value = s.apiHash;
+    // Load panel_type with fallback to 'solusvm'
+    $('panelType').value = s.panel_type || 'solusvm';
     $('serverTags').value = normalizeTagList(s.tags).join(', ');
     
     document.querySelectorAll('.server-item').forEach(el => {
@@ -214,6 +205,7 @@ function showNewForm() {
   $('apiUrl').value = '';
   $('apiKey').value = '';
   $('apiHash').value = '';
+  $('panelType').value = 'solusvm';
   $('serverTags').value = '';
   
   document.querySelectorAll('.server-item').forEach(el => {
@@ -222,15 +214,28 @@ function showNewForm() {
   hideMsg();
 }
 
+// Normalize all servers — ensure every node has panel_type (backward-compat)
+function normalizeServers(list) {
+  let changed = false;
+  const normalized = list.map(s => {
+    if (!s.panel_type) {
+      changed = true;
+      return { ...s, panel_type: 'solusvm' };
+    }
+    return s;
+  });
+  return { list: normalized, changed };
+}
+
 // Load configuration and migrate from legacy versions
 function loadConfig() {
   try {
-    chrome.storage.local.get(['servers', 'currentServerId', 'defaultServerId', 'apiUrl', 'apiKey', 'apiHash', 'tags', 'lang'], data => {
+    chrome.storage.local.get(['servers', 'currentServerId', 'defaultServerId', 'apiUrl', 'apiKey', 'apiHash', 'lang'], data => {
       if (chrome.runtime.lastError) console.error(chrome.runtime.lastError);
       data = data || {};
       let list = data.servers || [];
       
-      // Smooth compatibility migration
+      // Smooth compatibility migration from legacy flat keys
       if (list.length === 0 && data.apiUrl && data.apiKey && data.apiHash) {
         const oldServer = {
           id: 'server_' + Date.now(),
@@ -238,34 +243,39 @@ function loadConfig() {
           apiUrl: data.apiUrl,
           apiKey: data.apiKey,
           apiHash: data.apiHash,
-          tags: []
+          panel_type: 'solusvm'
         };
         list = [oldServer];
         chrome.storage.local.set({
           servers: list,
-          tags: [],
           currentServerId: oldServer.id
         }, () => {
           chrome.storage.local.remove(['apiUrl', 'apiKey', 'apiHash']);
         });
       }
-
-      const normalizedList = list.map(normalizeServer);
-      const nextTags = getAllTagsFromServers(normalizedList);
-      if (JSON.stringify(list) !== JSON.stringify(normalizedList) || JSON.stringify(data.tags || []) !== JSON.stringify(nextTags)) {
-        chrome.storage.local.set({ servers: normalizedList, tags: nextTags });
-      }
       
+      // Normalize: ensure every node has panel_type (backward-compat)
+      const { list: normalized, changed } = normalizeServers(list);
+      if (changed) {
+        chrome.storage.local.set({ servers: normalized });
+      }
+
+      // Initialize tags
+      allTags = getAllTagsFromServers(normalized);
+      const storedTags = data.tags || [];
+      if (JSON.stringify(storedTags) !== JSON.stringify(allTags)) {
+        chrome.storage.local.set({ tags: allTags });
+      }
+
       // Initialize language
       if (data.lang) {
         window.currentLang = data.lang;
       } else {
-        window.currentLang = 'en'; // Default to English
+        window.currentLang = 'en';
       }
       $('languageSelect').value = window.currentLang;
       
-      servers = normalizedList;
-      allTags = nextTags;
+      servers = normalized;
       defaultServerId = data.defaultServerId || null;
       
       applyTranslations();
@@ -288,7 +298,7 @@ function saveServer() {
   const apiUrl = $('apiUrl').value.trim();
   const apiKey = $('apiKey').value.trim();
   const apiHash = $('apiHash').value.trim();
-  const tags = normalizeTagList($('serverTags').value);
+  const panelType = $('panelType').value;
   
   if (!name || !apiUrl || !apiKey || !apiHash) {
     showMsg(t('msgRequired'), false);
@@ -302,36 +312,37 @@ function saveServer() {
     apiUrl: cleanedUrl,
     apiKey,
     apiHash,
-    tags
+    panel_type: panelType,
+    tags: normalizeTagList($('serverTags').value)
   };
   
   try {
     chrome.storage.local.get('currentServerId', data => {
-      if (chrome.runtime.lastError) console.error(chrome.runtime.lastError);
-      data = data || {};
-      let currentId = data.currentServerId;
-      const isEditing = !!editingServerId;
+    if (chrome.runtime.lastError) console.error(chrome.runtime.lastError);
+    data = data || {};
+    let currentId = data.currentServerId;
+    const isEditing = !!editingServerId;
       
-      if (isEditing) {
-        servers = servers.map(s => {
-          if (s.id === editingServerId) {
-            return { ...s, ...config };
-          }
-          return s;
-        });
-      } else {
-        const newId = 'server_' + Date.now();
-        const newServer = { id: newId, ...config };
-        servers.push(newServer);
-        editingServerId = newId;
-        currentId = newId;
-      }
-      
-      persistServers(servers, currentId, () => {
-        renderServerList();
-        selectServer(editingServerId);
-        showMsg(t(isEditing ? 'msgSaved' : 'msgAdded'), true);
+    if (isEditing) {
+      servers = servers.map(s => {
+        if (s.id === editingServerId) {
+          return { ...s, ...config };
+        }
+        return s;
       });
+    } else {
+      const newId = 'server_' + Date.now();
+      const newServer = { id: newId, ...config };
+      servers.push(newServer);
+      editingServerId = newId;
+      currentId = newId;
+    }
+      
+    persistServers(servers, currentId, () => {
+      renderServerList();
+      selectServer(editingServerId);
+      showMsg(t(isEditing ? 'msgSaved' : 'msgAdded'), true);
+    });
     });
   } catch (e) {
     console.error('saveServer error:', e);
@@ -355,17 +366,11 @@ function deleteServer(id) {
       if (currentId === id) {
         currentId = servers[0] ? servers[0].id : null;
       }
-      if (defaultServerId === id) {
-        defaultServerId = null;
-      }
       
       chrome.storage.local.remove('cache_' + id, () => {
-        allTags = getAllTagsFromServers(servers);
         chrome.storage.local.set({
           servers,
-          tags: allTags,
-          currentServerId: currentId,
-          defaultServerId
+          currentServerId: currentId
         }, () => {
           if (editingServerId === id || servers.length === 0) {
             if (servers.length > 0) {
@@ -398,7 +403,7 @@ function testConnection() {
   
   showMsg(t('msgTesting'), true);
   
-  const tempConfig = { apiUrl, apiKey, apiHash };
+  const tempConfig = { apiUrl, apiKey, apiHash, panel_type: $('panelType').value };
   
   try {
     chrome.runtime.sendMessage({ action: 'testConnection', config: tempConfig }, resp => {
