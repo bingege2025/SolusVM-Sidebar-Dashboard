@@ -27,12 +27,16 @@ function formatSize(bytes) {
 }
 
 function formatResource(val) {
-  if (!val || typeof val !== 'string') return '-';
+  if (!val || typeof val !== 'string') return 'N/A';
   const parts = val.split(',');
   if (parts.length < 4) return val;
-  const [total, used, free, percent] = parts;
-  const totalVal = parseFloat(total);
-  const usedVal = parseFloat(used);
+  const [a, b, c, d] = parts;
+  const va = parseFloat(a);
+  const vb = parseFloat(b);
+  const vc = parseFloat(c);
+  const totalVal = Math.max(va, vb, vc);
+  const usedVal = Math.min(va, vb, vc);
+  const percent = d;
   if (isNaN(totalVal) || totalVal === 0) return 'N/A';
   if (usedVal === 0) {
     return formatSize(totalVal);

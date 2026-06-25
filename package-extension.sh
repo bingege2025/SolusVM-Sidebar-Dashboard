@@ -1,7 +1,7 @@
 #!/bin/bash
 # package-extension.sh — 用于打包 Chrome 扩展程序，排除开发和无关文件
 
-EXTENSION_NAME="racknerd-server-manager"
+EXTENSION_NAME="solusvm-vps-dashboard"
 VERSION=$(node -p "require('./manifest.json').version")
 OUTPUT="${EXTENSION_NAME}-v${VERSION}.zip"
 
@@ -13,6 +13,8 @@ echo "正在打包扩展程序 $EXTENSION_NAME v$VERSION..."
 # 打包文件，排除 Git、Node、脚本和文档等开发文件
 zip -r "$OUTPUT" . \
   -x ".git/*" \
+  -x "__MACOSX/*" \
+  -x "servermanger/*" \
   -x "node_modules/*" \
   -x ".env" \
   -x "*.map" \

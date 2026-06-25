@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>RackNerd Server Configuration</title>
+  <title>SolusVM VPS Dashboard - Settings</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; padding: 32px 24px; background: #f5f6f8; max-width: 860px; margin: 0 auto; color: #333; }
@@ -46,19 +46,6 @@
     .server-title-container { display: flex; align-items: center; }
     .server-name { font-size: 13px; font-weight: 600; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .server-host { font-size: 11px; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .server-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
-    .server-tag {
-      max-width: 88px;
-      padding: 2px 6px;
-      border-radius: 999px;
-      background: #edf2f7;
-      color: #44546a;
-      font-size: 10px;
-      line-height: 1.2;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
     
     .badge-default {
       background: #ffb300;
@@ -86,8 +73,8 @@
     .form-title { font-size: 16px; font-weight: 600; margin-bottom: 20px; color: #333; }
     .form-group { margin-bottom: 16px; }
     label { display: block; font-weight: 600; margin-bottom: 6px; color: #555; font-size: 13px; }
-    input { width: 100%; padding: 10px 12px; border: 1px solid #dcdcdc; border-radius: 8px; font-size: 14px; color: #333; transition: all 0.2s; }
-    input:focus { outline: none; border-color: #4a90d9; box-shadow: 0 0 0 3px rgba(74,144,217,0.15); }
+    input, select { width: 100%; padding: 10px 12px; border: 1px solid #dcdcdc; border-radius: 8px; font-size: 14px; color: #333; transition: all 0.2s; background: white; }
+    input:focus, select:focus { outline: none; border-color: #4a90d9; box-shadow: 0 0 0 3px rgba(74,144,217,0.15); }
     .hint { font-size: 11px; color: #999; margin-top: 4px; }
     
     .form-actions { display: flex; gap: 10px; margin-top: 24px; }
@@ -103,7 +90,7 @@
 </head>
 <body>
   <div class="header-container">
-    <h1 id="i18n_title">⚙️ RackNerd Config Center</h1>
+    <h1 id="i18n_title">⚙️ SolusVM VPS Config Center</h1>
     <select id="languageSelect" class="lang-select">
       <option value="zh">简体中文</option>
       <option value="en">English</option>
@@ -130,29 +117,37 @@
       </div>
       
       <div class="form-group">
+        <label id="i18n_labelPanelType">Panel Type</label>
+        <select id="panelType">
+          <option value="solusvm" selected>SolusVM</option>
+        </select>
+        <div id="i18n_hintPanelType" class="hint">Select the control panel this VPS uses (more types coming soon)</div>
+      </div>
+      
+      <div class="form-group">
         <label id="i18n_labelUrl">API URL (SolusVM Panel URL)</label>
-        <input type="url" id="apiUrl" placeholder="https://xxx.racknerd.com:5656">
-        <div id="i18n_hintUrl" class="hint">RackNerd Client Portal → Services → Select VPS → SolusVM Panel URL</div>
+        <input type="url" id="apiUrl" placeholder="https://your-vps-panel.com/api/client/command.php">
+        <div id="i18n_hintUrl" class="hint">Log in to your VPS control panel → API tab → copy full API endpoint</div>
       </div>
       
       <div class="form-group">
         <label id="i18n_labelKey">API Key</label>
         <input type="text" id="apiKey" placeholder="Enter API Key">
-        <div id="i18n_hintKey" class="hint">Generate in SolusVM Panel → API tab</div>
+        <div id="i18n_hintKey" class="hint">Generate in your control panel → API tab</div>
       </div>
       
       <div class="form-group">
         <label id="i18n_labelHash">API Hash</label>
         <input type="text" id="apiHash" placeholder="Enter API Hash">
-        <div id="i18n_hintHash" class="hint">Generate in SolusVM Panel → API tab</div>
+        <div id="i18n_hintHash" class="hint">Generate in your control panel → API tab</div>
       </div>
-
+      
       <div class="form-group">
         <label id="i18n_labelTags">Tags</label>
         <input type="text" id="serverTags" placeholder="RN, LA, Production">
         <div id="i18n_hintTags" class="hint">Separate tags with commas or spaces</div>
       </div>
-      
+
       <div class="form-actions">
         <button id="saveBtn" class="btn-primary">Save Settings</button>
         <button id="testBtn" class="btn-secondary">Test Connection</button>

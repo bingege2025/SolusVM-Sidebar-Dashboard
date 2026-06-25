@@ -1,22 +1,22 @@
-# Chrome Web Store Listing — RackNerd Server Manager
+# Chrome Web Store Listing — SolusVM VPS Dashboard
 
 > Last Updated: 2026-05-30
 
 ## Store Listing (应用商店信息)
 
 **Extension Name (扩展名称)** [REQUIRED]
-`RackNerd Server Manager`
+`SolusVM VPS Dashboard`
 *(必须与 manifest.json 中的 name 保持一致。最多 75 个字符。)*
 
 **Short Description (简短说明)** [REQUIRED]
-`Manage RackNerd servers - view status, reboot, and shutdown.`
+`Manage SolusVM VPS servers - view status, reboot, boot, and shutdown.`
 *(最多 132 个字符。显示在搜索结果和卡片中。内容需具体阐述扩展程序的功能。)*
 
 **Detailed Description (详细说明)** [REQUIRED]
 *(最多 16,000 个字符。注：Chrome Web Store 详情页不支持 Markdown 格式，在开发者后台粘贴时请去除 Markdown 标记，使用换行进行分段，不要使用列表符号。)*
 
 ```text
-RackNerd Server Manager 是一款方便直观的 Chrome 浏览器扩展，专为 RackNerd 用户及使用 SolusVM 控制面板的 VPS 用户设计。通过调用 SolusVM 客户端 API，让您无需登录官网后台，即可直接在浏览器侧边栏或弹出窗口中实时监控和管理您的服务器。
+SolusVM VPS Dashboard 是一款方便直观的 Chrome 浏览器扩展，专为使用 SolusVM 控制面板的 VPS 用户设计。通过调用 SolusVM 客户端 API，让您无需反复登录服务商后台，即可直接在浏览器侧边栏或弹出窗口中实时监控和管理您的服务器。
 
 核心功能：
 1. 实时状态监控：一键获取服务器当前状态（运行中/已关机）、操作系统、IP 地址、以及 CPU、内存、硬盘和流量的使用进度条。
@@ -27,8 +27,8 @@ RackNerd Server Manager 是一款方便直观的 Chrome 浏览器扩展，专为
 使用步骤：
 1. 安装扩展后，右键点击图标选择“选项”，或在弹出窗口中点击设置图标进入配置页面。
 2. 填写您的服务器 API 信息：
-   - API URL：您的 SolusVM 管理面板地址（如 https://nerdvm.racknerd.com:5656 或 https://vpscp.racknerd.com:5656）
-   - API Key 与 API Hash：在 RackNerd 客户后台的 VPS 管理页面中，找到 "API" 选项卡并生成/获取。
+   - API URL：您的 SolusVM API 地址（如 https://panel.example.com/api/client/command.php）
+   - API Key 与 API Hash：在您的 SolusVM 面板或服务商 VPS 管理页面中，找到 "API" 选项卡并生成/获取。
 3. 点击“测试并保存”以确认连接成功。
 4. 点击浏览器工具栏的扩展图标，即可随时查看和控制您的服务器。
 
@@ -44,8 +44,8 @@ RackNerd Server Manager 是一款方便直观的 Chrome 浏览器扩展，专为
 `Developer Tools` (开发者工具) 或 `Productivity` (生产力工具)
 
 **Single Purpose (单一用途声明)** [REQUIRED]
-`通过 SolusVM API 提供便捷的 RackNerd 服务器（VPS）状态监控与基础控制操作。`
-*(用一句话描述，必须狭窄且易于理解。例如：“通过 SolusVM API 管理和监控您的 RackNerd 服务器状态及执行基础控制操作。”)*
+`通过 SolusVM API 提供便捷的 VPS 状态监控与基础控制操作。`
+*(用一句话描述，必须狭窄且易于理解。例如：“通过 SolusVM API 管理和监控您的 VPS 状态并执行基础控制操作。”)*
 
 **Primary Language (主语言)** [REQUIRED]
 `English` 或 `中文 (简体)` (建议设为 English，因为全球通用，或中文简体，视您主要受众而定)
@@ -72,7 +72,7 @@ RackNerd Server Manager 是一款方便直观的 Chrome 浏览器扩展，专为
 | 权限名称 (Permission) | 类型 (Type) | 英文合理性说明 (Justification in English) |
 |------------|------|---------------|
 | `storage` | permissions | Used to store the server's API configurations (API URL, API Key, API Hash) and user preferences locally on the user's device. |
-| `https://*/*` | host_permissions | Required to make fetch requests directly to the SolusVM panel URLs (which reside on user-configured custom domains, e.g., nerdvm.racknerd.com or vpscp.racknerd.com) to retrieve server statuses and send control commands (reboot/shutdown/boot). |
+| `https://*/*` | host_permissions | Required to make fetch requests directly to user-configured SolusVM panel URLs, which may reside on custom provider domains, to retrieve server statuses and send control commands (reboot/shutdown/boot). |
 
 ---
 

@@ -105,11 +105,8 @@ async function callSolusVM(command, extraParams = {}) {
   }
 
   let url = config.apiUrl.trim();
-  // Remove trailing slash if present
   url = url.replace(/\/$/, '');
-  // Auto-complete URL if it doesn't contain /api/client/command.php
   if (!url.includes('/api/client/command.php')) {
-    // Remove trailing /api or /api/ if present
     url = url.replace(/\/api$/, '');
     url = url + '/api/client/command.php';
   }
@@ -117,10 +114,12 @@ async function callSolusVM(command, extraParams = {}) {
   const params = new URLSearchParams();
   params.append('key', config.apiKey);
   params.append('hash', config.apiHash);
-  params.append('action', command); // SolusVM Client API action parameter
+  params.append('action', command);
   for (const [key, value] of Object.entries(extraParams)) {
     params.append(key, value);
   }
+
+  console.log(`[DEBUG] fetch ${command} → ${url}`);
 
   const response = await fetch(url, {
     method: 'POST',
@@ -128,6 +127,9 @@ async function callSolusVM(command, extraParams = {}) {
       'Content-Type': 'application/x-www-form-urlencoded'
     },
     body: params
+  }).catch(err => {
+    console.error(`[ERROR] fetch failed for ${command}:`, err.message, 'URL:', url);
+    throw err;
   });
 
   if (!response.ok) {
