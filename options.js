@@ -216,22 +216,30 @@ function showNewForm() {
 
 // Normalize all servers — ensure every node has panel_type (backward-compat)
 function normalizeServers(list) {
-  let changed = false;
-  const normalized = list.map(s => {
-    if (!s.panel_type) {
-      changed = true;
-      return { ...s, panel_type: 'solusvm' };
-    }
-    return s;
-  });
-  return { list: normalized, changed };
+  return (Array.isArray(list) ? list : []).map(server => ({
+    id: server.id || 'server_' + Math.random().toString(36).substr(2, 9),
+    name: server.name || 'Default Server',
+    apiUrl: (server.apiUrl || '').trim(),
+    apiKey: (server.apiKey || '').trim(),
+    apiHash: (server.apiHash || '').trim(),
+    panel_type: server.panel_type || 'solusvm',
+    tags: normalizeTagList(server.tags)
+  }));
 }
 
 // Load configuration and migrate from legacy versions
 function loadConfig() {
   try {
-    chrome.storage.local.get(['servers', 'currentServerId', 'defaultServerId', 'apiUrl', 'apiKey', 'apiHash', 'lang'], data => {
-      if (chrome.runtime.lastError) console.error(chrome.runtime.lastError);
+    chrome.storage.local.get(['servers', 'currentServerId', 'defaultServerId', 'apiUrl', 'apiKey', 'apiHash', 'tags', 'lang'], data => {
+      if (chrome.runtime.lastError) {
+        const errMsg = chrome.runtime.lastError.message;
+        if (errMsg.includes('context invalidated')) {
+          console.warn('Extension context invalidated, reloading...');
+          location.reload();
+          return;
+        }
+        console.error(chrome.runtime.lastError);
+      }
       data = data || {};
       let list = data.servers || [];
       
@@ -243,20 +251,21 @@ function loadConfig() {
           apiUrl: data.apiUrl,
           apiKey: data.apiKey,
           apiHash: data.apiHash,
-          panel_type: 'solusvm'
+          panel_type: 'solusvm',
+          tags: []
         };
         list = [oldServer];
         chrome.storage.local.set({
           servers: list,
-          currentServerId: oldServer.id
+          currentServerId: oldServer.id,
+          tags: []
         }, () => {
           chrome.storage.local.remove(['apiUrl', 'apiKey', 'apiHash']);
         });
       }
       
-      // Normalize: ensure every node has panel_type (backward-compat)
-      const { list: normalized, changed } = normalizeServers(list);
-      if (changed) {
+      const normalized = normalizeServers(list);
+      if (JSON.stringify(data.servers) !== JSON.stringify(normalized)) {
         chrome.storage.local.set({ servers: normalized });
       }
 
@@ -288,6 +297,11 @@ function loadConfig() {
       }
     });
   } catch (e) {
+    if (e.message.includes('context invalidated')) {
+      console.warn('Extension context invalidated, reloading...');
+      location.reload();
+      return;
+    }
     console.error('loadConfig error:', e);
   }
 }
@@ -408,7 +422,13 @@ function testConnection() {
   try {
     chrome.runtime.sendMessage({ action: 'testConnection', config: tempConfig }, resp => {
       if (chrome.runtime.lastError) {
-        showMsg(t('msgTestFail', { error: chrome.runtime.lastError.message }), false);
+        const errMsg = chrome.runtime.lastError.message;
+        if (errMsg.includes('context invalidated')) {
+          console.warn('Extension context invalidated, reloading...');
+          location.reload();
+          return;
+        }
+        showMsg(t('msgTestFail', { error: errMsg }), false);
         return;
       }
       if (resp && resp.success) {
@@ -419,6 +439,11 @@ function testConnection() {
       }
     });
   } catch (e) {
+    if (e.message.includes('context invalidated')) {
+      console.warn('Extension context invalidated, reloading...');
+      location.reload();
+      return;
+    }
     showMsg(t('msgTestFail', { error: e.message }), false);
   }
 }

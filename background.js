@@ -33,7 +33,12 @@ function getAllTagsFromServers(list) {
 
 function normalizeServers(list) {
   return (Array.isArray(list) ? list : []).map(server => ({
-    ...server,
+    id: server.id || 'server_' + Math.random().toString(36).substr(2, 9),
+    name: server.name || 'Default Server',
+    apiUrl: (server.apiUrl || '').trim(),
+    apiKey: (server.apiKey || '').trim(),
+    apiHash: (server.apiHash || '').trim(),
+    panel_type: server.panel_type || 'solusvm',
     tags: normalizeTagList(server.tags)
   }));
 }
@@ -41,13 +46,15 @@ function normalizeServers(list) {
 // Check and migrate legacy data structures
 function checkAndMigrateConfig(callback) {
   chrome.storage.local.get(['apiUrl', 'apiKey', 'apiHash', 'servers', 'tags'], data => {
-    if (!data.servers && data.apiUrl && data.apiKey && data.apiHash) {
+    let list = data.servers || [];
+    if (list.length === 0 && data.apiUrl && data.apiKey && data.apiHash) {
       const defaultServer = {
         id: 'server_' + Date.now(),
         name: 'Default Server',
         apiUrl: data.apiUrl,
         apiKey: data.apiKey,
         apiHash: data.apiHash,
+        panel_type: 'solusvm',
         tags: []
       };
       chrome.storage.local.set({
@@ -60,9 +67,11 @@ function checkAndMigrateConfig(callback) {
         });
       });
     } else {
-      const normalizedServers = normalizeServers(data.servers);
+      const normalizedServers = normalizeServers(list);
       const normalizedTags = getAllTagsFromServers(normalizedServers);
-      if (JSON.stringify(data.servers || []) !== JSON.stringify(normalizedServers) || JSON.stringify(data.tags || []) !== JSON.stringify(normalizedTags)) {
+      const serversChanged = JSON.stringify(data.servers) !== JSON.stringify(normalizedServers);
+      const tagsChanged = JSON.stringify(data.tags || []) !== JSON.stringify(normalizedTags);
+      if (serversChanged || tagsChanged) {
         chrome.storage.local.set({
           servers: normalizedServers,
           tags: normalizedTags

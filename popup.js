@@ -50,7 +50,13 @@ function sendMessage(action) {
     try {
       chrome.runtime.sendMessage({ action }, response => {
         if (chrome.runtime.lastError) {
-          resolve({ success: false, error: chrome.runtime.lastError.message });
+          const errMsg = chrome.runtime.lastError.message;
+          if (errMsg.includes('context invalidated')) {
+            console.warn('Extension context invalidated, reloading...');
+            location.reload();
+            return;
+          }
+          resolve({ success: false, error: errMsg });
         } else if (!response) {
           resolve({ success: false, error: 'No response from background script' });
         } else {
@@ -58,6 +64,11 @@ function sendMessage(action) {
         }
       });
     } catch (e) {
+      if (e.message.includes('context invalidated')) {
+        console.warn('Extension context invalidated, reloading...');
+        location.reload();
+        return;
+      }
       resolve({ success: false, error: e.message });
     }
   });
@@ -81,6 +92,12 @@ function safeStorageGet(keys, callback, timeoutMs) {
       if (!fired) {
         fired = true;
         if (chrome.runtime.lastError) {
+          const errMsg = chrome.runtime.lastError.message;
+          if (errMsg.includes('context invalidated')) {
+            console.warn('Extension context invalidated in storage.get, reloading...');
+            location.reload();
+            return;
+          }
           console.error('storage.get error:', chrome.runtime.lastError);
           callback(null);
         } else {
@@ -92,6 +109,11 @@ function safeStorageGet(keys, callback, timeoutMs) {
     clearTimeout(timer);
     if (!fired) {
       fired = true;
+      if (e.message.includes('context invalidated')) {
+        console.warn('Extension context invalidated in storage.get, reloading...');
+        location.reload();
+        return;
+      }
       console.error('storage.get exception:', e);
       callback(null);
     }
@@ -126,7 +148,12 @@ function normalizeTagList(value) {
 
 function normalizeServers(list) {
   return (Array.isArray(list) ? list : []).map(server => ({
-    ...server,
+    id: server.id || 'server_' + Math.random().toString(36).substr(2, 9),
+    name: server.name || 'Default Server',
+    apiUrl: (server.apiUrl || '').trim(),
+    apiKey: (server.apiKey || '').trim(),
+    apiHash: (server.apiHash || '').trim(),
+    panel_type: server.panel_type || 'solusvm',
     tags: normalizeTagList(server.tags)
   }));
 }
@@ -242,7 +269,7 @@ if (feedbackEmailBtn) {
   const t = window.t;
 
   // Step 2: Load servers from storage (with timeout protection)
-  safeStorageGet(['servers', 'currentServerId', 'defaultServerId', 'tags', 'privacyModeEnabled'], data => {
+  safeStorageGet(['servers', 'currentServerId', 'defaultServerId', 'tags', 'privacyModeEnabled', 'apiUrl', 'apiKey', 'apiHash'], data => {
     if (!data) {
       // Storage timed out or errored — show retry prompt
       main.innerHTML = `
@@ -255,12 +282,40 @@ if (feedbackEmailBtn) {
       return;
     }
 
-    data.servers = normalizeServers(data.servers);
-    privacyModeEnabled = Boolean(data.privacyModeEnabled);
-    const allTags = getAllTagsFromServers(data.servers);
-    if (JSON.stringify(data.tags || []) !== JSON.stringify(allTags)) {
-      chrome.storage.local.set({ servers: data.servers, tags: allTags });
+    let list = data.servers || [];
+    // Smooth compatibility migration from legacy flat keys
+    if (list.length === 0 && data.apiUrl && data.apiKey && data.apiHash) {
+      const oldServer = {
+        id: 'server_' + Date.now(),
+        name: 'Default Server',
+        apiUrl: data.apiUrl,
+        apiKey: data.apiKey,
+        apiHash: data.apiHash,
+        panel_type: 'solusvm',
+        tags: []
+      };
+      list = [oldServer];
+      data.currentServerId = oldServer.id;
+      chrome.storage.local.set({
+        servers: list,
+        currentServerId: oldServer.id,
+        tags: []
+      }, () => {
+        chrome.storage.local.remove(['apiUrl', 'apiKey', 'apiHash']);
+      });
     }
+
+    const normalizedServers = normalizeServers(list);
+    privacyModeEnabled = Boolean(data.privacyModeEnabled);
+    const allTags = getAllTagsFromServers(normalizedServers);
+    
+    const serversChanged = JSON.stringify(data.servers) !== JSON.stringify(normalizedServers);
+    const tagsChanged = JSON.stringify(data.tags || []) !== JSON.stringify(allTags);
+    if (serversChanged || tagsChanged) {
+      chrome.storage.local.set({ servers: normalizedServers, tags: allTags });
+    }
+
+    data.servers = normalizedServers;
 
     if (!data.servers || data.servers.length === 0) {
       main.innerHTML = `
