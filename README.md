@@ -1,33 +1,104 @@
-# SolusVM VPS Dashboard - Chrome Extension
+# SolusVM VPS Dashboard
 
-A Chrome Extension for managing VPS instances on SolusVM panels.
+A local-only Chrome extension for managing **SolusVM-based VPS servers** from a small browser popup.
 
-## Features
+This is not a generic VPS monitor. It is built for users who still have budget VPS boxes on old SolusVM panels and want a faster way to check provider-side status, bandwidth, and basic power actions without opening each provider panel.
 
-- 🔧 **API Configuration** - Easily configure your SolusVM API URL, Key, and Hash.
-- 🏢 **Multi-Server Management** - Add multiple VPS nodes and switch between them seamlessly.
-- ⭐ **Set Default Server** - Star any server to make it the default loaded server when opening the extension.
-- 🌐 **Global Localization** - Pure centralization of localization dictionary supporting English and Simplified Chinese (defaults to English, toggle manually in Config Center).
-- ⚡ **SWR & Combined Requests** - Employs Stale-While-Revalidate (SWR) cache mechanism to display stored server data instantly while silently fetching the latest updates. Combined endpoints to slash network overhead by 50%.
-- 🔁 **Power Controls** - One-click Reboot, Boot, and Shutdown controls with clean processing visual states.
+[Chrome Web Store](https://chromewebstore.google.com/detail/solusvm-vps-dashboard/eopncllcllcigednkoegohhmknhibdbc?hl=en)
 
-## How to Install
+## Who This Is For
 
-1. Open Chrome and navigate to `chrome://extensions/`
-2. Toggle on "Developer mode" in the top right corner.
-3. Click "Load unpacked" and select this project directory.
-4. Click the extension icon → ⚙️ to enter settings.
-5. Fill in your SolusVM API credentials from your VPS provider's SolusVM panel.
+- You manage one or more VPS instances that expose the SolusVM V1 Client API.
+- Your provider still uses SolusVM, for example some budget VPS providers.
+- You want quick status/resource checks from Chrome.
+- You want reboot, boot, and shutdown actions without loading the full SolusVM panel.
+- You prefer a local-only tool with no account, no backend, and no telemetry.
 
-## How to Get API Info
+## What It Does
+
+- Manage multiple SolusVM VPS API profiles.
+- View provider-side status and resource information.
+- Check bandwidth, memory, disk, IP, hostname, and node details when available from the API.
+- Run reboot, boot, and shutdown actions from the popup.
+- Search and filter servers with tags.
+- Set a default server.
+- Use cached data first, then refresh in the background.
+- Switch between English and Simplified Chinese.
+- Blur sensitive fields with privacy mode for screenshots or screen sharing.
+
+## What It Does Not Do
+
+- It does not support Virtualizor, Proxmox, SSH-based monitoring, or generic VPS providers.
+- It does not install an agent inside your VPS.
+- It does not replace real monitoring systems such as Beszel, Prometheus, Uptime Kuma, or Netdata.
+- It does not collect analytics, browsing history, server credentials, or telemetry.
+
+## Privacy And Security
+
+All configuration stays in your browser.
+
+- No backend server.
+- No user account.
+- No tracking or analytics.
+- No third-party proxy.
+- API URL, API Key, and API Hash are stored locally with `chrome.storage.local`.
+- API requests are sent directly from your browser to the SolusVM endpoint you configure.
+
+See [PRIVACY.md](./PRIVACY.md) for the full privacy policy.
+
+## Install
+
+### Chrome Web Store
+
+Install from the Chrome Web Store:
+
+https://chromewebstore.google.com/detail/solusvm-vps-dashboard/eopncllcllcigednkoegohhmknhibdbc?hl=en
+
+### Local Development
+
+1. Open Chrome and go to `chrome://extensions/`.
+2. Enable `Developer mode`.
+3. Click `Load unpacked`.
+4. Select this project directory.
+5. Open the extension popup and click the settings button.
+6. Add your SolusVM API URL, API Key, and API Hash.
+
+## Getting SolusVM API Credentials
 
 1. Log in to your VPS provider's client portal or SolusVM panel.
-2. Open the target VPS and enter its SolusVM panel.
-3. Go to the API tab to retrieve your **API Key** and **API Hash**.
-4. Copy the full API endpoint, for example: `https://panel.example.com/api/client/command.php`.
+2. Open the target VPS.
+3. Go to the SolusVM API section.
+4. Copy the API Key and API Hash.
+5. Use the full API endpoint, for example:
 
-## Technical Overview
+```text
+https://panel.example.com/api/client/command.php
+```
 
-- Based on SolusVM V1 Client API.
+If your provider hides or disables SolusVM Client API access, this extension cannot manage that VPS.
+
+## Technical Notes
+
 - Chrome Extension Manifest V3.
-- Vanilla JavaScript, HTML, and CSS (framework-free).
+- SolusVM V1 Client API.
+- Vanilla JavaScript, HTML, and CSS.
+- No framework and no build step.
+- Background service worker handles API requests.
+- Popup uses stale-while-revalidate style local caching for faster display.
+
+## Suggested GitHub Topics
+
+Use these repository topics to make the project easier to find:
+
+```text
+chrome-extension
+manifest-v3
+solusvm
+vps
+vps-management
+server-management
+lowendbox
+lowendtalk
+racknerd
+javascript
+```
