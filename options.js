@@ -73,7 +73,7 @@ function persistServers(nextServers, currentServerId, callback) {
 
 // Apply internationalization translations
 function applyTranslations() {
-  $('i18n_title').textContent = t('title');
+  $('i18n_title').textContent = '⚙️ SolusVM VPS · ' + t('subtitle');
   $('addBtn').textContent = t('btnAdd');
   $('i18n_labelName').textContent = t('labelName');
   $('i18n_hintName').textContent = t('hintName');
@@ -97,6 +97,9 @@ function applyTranslations() {
   $('apiKey').placeholder = t('placeholderKey');
   $('apiHash').placeholder = t('placeholderHash');
   $('serverTags').placeholder = t('placeholderTags');
+  
+  // 页面标题
+  document.title = t('title');
   
   // Form title
   if (editingServerId) {
@@ -139,7 +142,7 @@ function renderServerList() {
         </div>
         <div class="server-actions">
           <button class="btn-icon star ${isDefault ? 'active' : ''}" data-id="${s.id}" title="${t('tagDefault')}">${isDefault ? '★' : '☆'}</button>
-          <button class="btn-icon del" data-id="${s.id}" title="Delete">🗑️</button>
+          <button class="btn-icon del" data-id="${s.id}" title="${t('deleteTitle')}">🗑️</button>
         </div>
       </div>
     `;
@@ -360,7 +363,7 @@ function saveServer() {
     });
   } catch (e) {
     console.error('saveServer error:', e);
-    showMsg('Save error: ' + e.message, false);
+    showMsg(t('saveError', { error: e.message }), false);
   }
 }
 
@@ -434,7 +437,7 @@ function testConnection() {
       if (resp && resp.success) {
         showMsg(t('msgTestOk'), true);
       } else {
-        const errMsg = resp ? resp.error : 'API Timeout';
+        const errMsg = resp ? resp.error : t('apiTimeout');
         showMsg(t('msgTestFail', { error: errMsg }), false);
       }
     });

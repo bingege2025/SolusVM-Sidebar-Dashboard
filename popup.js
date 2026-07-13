@@ -58,7 +58,7 @@ function sendMessage(action) {
           }
           resolve({ success: false, error: errMsg });
         } else if (!response) {
-          resolve({ success: false, error: 'No response from background script' });
+          resolve({ success: false, error: window.t('noResponse') });
         } else {
           resolve(response);
         }
@@ -174,7 +174,8 @@ function updatePrivacyToggle() {
   if (!btn) return;
   btn.classList.toggle('active', privacyModeEnabled);
   btn.setAttribute('aria-pressed', String(privacyModeEnabled));
-  btn.title = privacyModeEnabled ? 'Privacy mode on' : 'Privacy mode off';
+  btn.title = privacyModeEnabled ? window.t('privacyOn') : window.t('privacyOff');
+  btn.setAttribute('aria-label', window.t('togglePrivacy'));
 }
 
 function applyPrivacyMode() {
@@ -213,9 +214,16 @@ function initFeedbackSection() {
   const feedbackBugText = $('feedbackBugText');
   const feedbackForumText = $('feedbackForumText');
   const feedbackEmailText = $('feedbackEmailText');
+  const feedbackBugBtn = $('feedbackBugBtn');
+  const feedbackForumBtn = $('feedbackForumBtn');
+  const feedbackEmailBtn = $('feedbackEmailBtn');
   if (feedbackBugText) feedbackBugText.textContent = t('feedbackBug');
   if (feedbackForumText) feedbackForumText.textContent = t('feedbackForum');
   if (feedbackEmailText) feedbackEmailText.textContent = t('feedbackEmail');
+  // 更新反馈链接的 title 属性
+  if (feedbackBugBtn) feedbackBugBtn.title = t('feedbackBugTitle');
+  if (feedbackForumBtn) feedbackForumBtn.title = t('feedbackForumTitle');
+  if (feedbackEmailBtn) feedbackEmailBtn.title = t('feedbackEmailTitle');
 }
 
 // 绑定反馈按钮点击事件
@@ -253,34 +261,33 @@ if (feedbackEmailBtn) {
   const statusBar = $('statusBar');
   if (!main) return;
 
-  // Step 1: Fire-and-forget language init (do NOT block on it)
-  // window.t() already works with the default 'en' set in i18n.js
-  if (typeof window.initI18n === 'function') {
-    window.initI18n(() => {
-      // Update settings button title once language is loaded
-      if (settingsBtn) settingsBtn.title = window.t('settings');
-      // 更新反馈区域国际化文本
-      initFeedbackSection();
-    });
-  }
-
-  // We can use t() immediately because currentLang defaults to 'en'
-  // and the dictionary is loaded synchronously via i18n.js
   const t = window.t;
 
-  // Step 2: Load servers from storage (with timeout protection)
-  safeStorageGet(['servers', 'currentServerId', 'defaultServerId', 'tags', 'privacyModeEnabled', 'apiUrl', 'apiKey', 'apiHash'], data => {
+  // 将 lang 与其他数据一起读取，确保渲染前语言已就绪
+  safeStorageGet(['servers', 'currentServerId', 'defaultServerId', 'tags', 'privacyModeEnabled', 'apiUrl', 'apiKey', 'apiHash', 'lang'], data => {
     if (!data) {
       // Storage timed out or errored — show retry prompt
       main.innerHTML = `
         <div class="error">
-          ⚠️ Unable to read storage. 
-          <a href="#" id="retryLink" style="color:#4a90d9;">Retry</a>
+          ${t('storageError')} 
+          <a href="#" id="retryLink" style="color:#4a90d9;">${t('retry')}</a>
         </div>`;
       const retryLink = $('retryLink');
       if (retryLink) retryLink.addEventListener('click', e => { e.preventDefault(); init(); });
       return;
     }
+
+    // 第一时间设置语言，确保后续所有 t() 调用使用正确的语言
+    window.currentLang = data.lang || 'en';
+
+    // 更新所有静态 UI 文本
+    if (settingsBtn) settingsBtn.title = t('settings');
+    const searchInput = $('serverSearchInput');
+    if (searchInput) searchInput.placeholder = t('searchPlaceholder');
+    updatePrivacyToggle();
+    initFeedbackSection();
+    // 更新页面标题
+    document.title = t('popupTitle') || 'SolusVM VPS Dashboard';
 
     let list = data.servers || [];
     // Smooth compatibility migration from legacy flat keys
