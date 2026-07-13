@@ -11,6 +11,7 @@ rm -f "$OUTPUT"
 echo "正在打包扩展程序 $EXTENSION_NAME v$VERSION..."
 
 # 打包文件，排除 Git、Node、脚本和文档等开发文件
+# 注意：_locales 目录包含 Chrome 原生国际化文件，需打入包中
 zip -r "$OUTPUT" . \
   -x ".git/*" \
   -x "__MACOSX/*" \
@@ -24,7 +25,8 @@ zip -r "$OUTPUT" . \
   -x "Thumbs.db" \
   -x "*.sh" \
   -x "*.zip" \
-  -x ".gitignore"
+  -x ".gitignore" \
+  -x ".agents/*"
 
 if [ -f "$OUTPUT" ]; then
   echo "✅ 打包成功: $OUTPUT ($(du -h "$OUTPUT" | cut -f1))"

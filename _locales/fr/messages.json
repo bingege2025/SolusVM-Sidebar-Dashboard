@@ -1,0 +1,10 @@
+{
+  "appName": {
+    "message": "SolusVM VPS Dashboard",
+    "description": "Le nom de l'extension"
+  },
+  "appDescription": {
+    "message": "Un moniteur latéral léger et 100% privé pour SolusVM VPS. Consultez le statut, redémarrez et gérez plusieurs serveurs dans votre navigateur.",
+    "description": "La description de l'extension"
+  }
+}
