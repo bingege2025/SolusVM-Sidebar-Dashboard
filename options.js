@@ -6,6 +6,8 @@ let servers = [];
 let editingServerId = null;
 let defaultServerId = null;
 let allTags = [];
+let darkModeEnabled = false;
+const CONFIG_EXPORT_VERSION = 1;
 
 const t = window.t;
 
@@ -32,6 +34,27 @@ function hideMsg() {
   const el = $('msg');
   if (el) {
     el.style.display = 'none';
+  }
+}
+
+function updateThemeToggle() {
+  const btn = $('themeToggle');
+  if (!btn) return;
+  btn.textContent = darkModeEnabled ? '☀' : '☾';
+  btn.title = darkModeEnabled ? t('lightMode') : t('darkMode');
+  btn.setAttribute('aria-label', btn.title);
+}
+
+function applyTheme() {
+  document.body.classList.toggle('dark', darkModeEnabled);
+  updateThemeToggle();
+}
+
+function setDarkMode(enabled, persist) {
+  darkModeEnabled = Boolean(enabled);
+  applyTheme();
+  if (persist) {
+    chrome.storage.local.set({ darkModeEnabled });
   }
 }
 
@@ -87,9 +110,13 @@ function applyTranslations() {
   $('i18n_hintHash').textContent = t('hintHash');
   $('i18n_labelTags').textContent = t('labelTags');
   $('i18n_hintTags').textContent = t('hintTags');
+  $('i18n_configToolsTitle').textContent = t('configToolsTitle');
+  $('i18n_configToolsHint').textContent = t('configToolsHint');
   
   $('saveBtn').textContent = t('btnSave');
   $('testBtn').textContent = t('btnTest');
+  $('exportConfigBtn').textContent = t('btnExportConfig');
+  $('importConfigBtn').textContent = t('btnImportConfig');
   
   // placeholder
   $('serverName').placeholder = t('placeholderName');
@@ -261,7 +288,7 @@ function normalizeServers(list) {
 // Load configuration and migrate from legacy versions
 function loadConfig() {
   try {
-    chrome.storage.local.get(['servers', 'currentServerId', 'defaultServerId', 'apiUrl', 'apiKey', 'apiHash', 'tags', 'lang'], data => {
+    chrome.storage.local.get(['servers', 'currentServerId', 'defaultServerId', 'apiUrl', 'apiKey', 'apiHash', 'tags', 'lang', 'darkModeEnabled'], data => {
       if (chrome.runtime.lastError) {
         const errMsg = chrome.runtime.lastError.message;
         if (errMsg.includes('context invalidated')) {
@@ -313,6 +340,8 @@ function loadConfig() {
       } else {
         window.currentLang = 'en';
       }
+      darkModeEnabled = Boolean(data.darkModeEnabled);
+      applyTheme();
       $('languageSelect').value = window.currentLang;
       
       servers = normalized;
@@ -417,14 +446,12 @@ function deleteServer(id) {
           servers,
           currentServerId: currentId
         }, () => {
-          if (editingServerId === id || servers.length === 0) {
-            if (servers.length > 0) {
-              selectServer(servers[0].id);
-            } else {
-              showNewForm();
-            }
+          renderServerList();
+          if (servers.length > 0) {
+            editingServerId = currentId || servers[0].id;
+            selectServer(editingServerId);
           } else {
-            renderServerList();
+            showNewForm();
           }
           showMsg(t('msgDeleted'), true);
         });
@@ -480,16 +507,153 @@ function testConnection() {
   }
 }
 
+function getExportFileName() {
+  const date = new Date().toISOString().slice(0, 10);
+  return `solusvm-vps-dashboard-config-${date}.json`;
+}
+
+function exportConfig() {
+  const keys = [
+    'servers',
+    'currentServerId',
+    'defaultServerId',
+    'tags',
+    'lang',
+    'darkModeEnabled',
+    'privacyModeEnabled'
+  ];
+
+  chrome.storage.local.get(keys, data => {
+    if (chrome.runtime.lastError) {
+      showMsg(t('msgExportFail', { error: chrome.runtime.lastError.message }), false);
+      return;
+    }
+
+    const payload = {
+      app: 'SolusVM VPS Dashboard',
+      schemaVersion: CONFIG_EXPORT_VERSION,
+      exportedAt: new Date().toISOString(),
+      extensionVersion: chrome.runtime.getManifest().version,
+      config: {
+        servers: normalizeServers(data.servers || []),
+        currentServerId: data.currentServerId || null,
+        defaultServerId: data.defaultServerId || null,
+        tags: Array.isArray(data.tags) ? data.tags : [],
+        lang: data.lang || window.currentLang || 'en',
+        darkModeEnabled: Boolean(data.darkModeEnabled),
+        privacyModeEnabled: Boolean(data.privacyModeEnabled)
+      },
+      warning: 'This file contains API credentials. Keep it private.'
+    };
+
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = getExportFileName();
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    showMsg(t('msgExportOk'), true);
+  });
+}
+
+function normalizeImportedConfig(raw) {
+  const config = raw && raw.config ? raw.config : raw;
+  if (!config || typeof config !== 'object') {
+    throw new Error(t('msgImportInvalid'));
+  }
+
+  const importedServers = normalizeServers(config.servers || []);
+  if (!Array.isArray(config.servers) || importedServers.length === 0) {
+    throw new Error(t('msgImportNoServers'));
+  }
+
+  const serverIds = new Set(importedServers.map(server => server.id));
+  const currentServerId = serverIds.has(config.currentServerId)
+    ? config.currentServerId
+    : importedServers[0].id;
+  const nextDefaultServerId = serverIds.has(config.defaultServerId)
+    ? config.defaultServerId
+    : null;
+  const nextTags = getAllTagsFromServers(importedServers);
+
+  return {
+    servers: importedServers,
+    currentServerId,
+    defaultServerId: nextDefaultServerId,
+    tags: nextTags,
+    privacyModeEnabled: Boolean(config.privacyModeEnabled)
+  };
+}
+
+function removeCacheKeys(callback) {
+  chrome.storage.local.get(null, data => {
+    const cacheKeys = Object.keys(data || {}).filter(key => key.startsWith('cache_'));
+    if (cacheKeys.length === 0) {
+      callback();
+      return;
+    }
+    chrome.storage.local.remove(cacheKeys, callback);
+  });
+}
+
+function importConfigFile(file) {
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const parsed = JSON.parse(reader.result);
+      const nextConfig = normalizeImportedConfig(parsed);
+      if (!confirm(t('confirmImportConfig', { count: nextConfig.servers.length }))) {
+        return;
+      }
+
+      removeCacheKeys(() => {
+        chrome.storage.local.set(nextConfig, () => {
+          if (chrome.runtime.lastError) {
+            showMsg(t('msgImportFail', { error: chrome.runtime.lastError.message }), false);
+            return;
+          }
+          servers = nextConfig.servers;
+          defaultServerId = nextConfig.defaultServerId;
+          editingServerId = nextConfig.currentServerId;
+          allTags = nextConfig.tags;
+          applyTranslations();
+          selectServer(nextConfig.currentServerId);
+          showMsg(t('msgImportOk', { count: nextConfig.servers.length }), true);
+        });
+      });
+    } catch (e) {
+      showMsg(t('msgImportFail', { error: e.message }), false);
+    } finally {
+      $('importConfigFile').value = '';
+    }
+  };
+  reader.onerror = () => {
+    showMsg(t('msgImportFail', { error: reader.error ? reader.error.message : 'Unable to read file' }), false);
+    $('importConfigFile').value = '';
+  };
+  reader.readAsText(file);
+}
+
 // Bind DOM events
 $('addBtn').addEventListener('click', showNewForm);
 $('saveBtn').addEventListener('click', saveServer);
 $('testBtn').addEventListener('click', testConnection);
 $('panelType').addEventListener('change', updatePanelHelp);
+$('themeToggle').addEventListener('click', () => setDarkMode(!darkModeEnabled, true));
+$('exportConfigBtn').addEventListener('click', exportConfig);
+$('importConfigBtn').addEventListener('click', () => $('importConfigFile').click());
+$('importConfigFile').addEventListener('change', e => importConfigFile(e.target.files[0]));
 $('languageSelect').addEventListener('change', e => {
   const selectedLang = e.target.value;
   chrome.storage.local.set({ lang: selectedLang }, () => {
     window.currentLang = selectedLang;
     applyTranslations();
+    applyTheme();
     showMsg(window.t('msgSaved'), true);
   });
 });
