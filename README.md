@@ -2,13 +2,14 @@
 
 A local-only Chrome extension for managing **SolusVM-based VPS servers** from a small browser popup.
 
-This is not a generic VPS monitor. It is built for users who still have budget VPS boxes on old SolusVM panels and want a faster way to check provider-side status, bandwidth, and basic power actions without opening each provider panel.
+This is not a generic VPS monitor. It is built for users who still have budget VPS boxes on SolusVM panels and want a faster way to check provider-side status, bandwidth, and basic power actions without opening each provider panel.
 
 [Chrome Web Store](https://chromewebstore.google.com/detail/solusvm-vps-dashboard/eopncllcllcigednkoegohhmknhibdbc?hl=en)
 
 ## Who This Is For
 
 - You manage one or more VPS instances that expose the SolusVM V1 Client API.
+- You want to test experimental SolusVM 2 REST API support.
 - Your provider still uses SolusVM, for example some budget VPS providers.
 - You want quick status/resource checks from Chrome.
 - You want reboot, boot, and shutdown actions without loading the full SolusVM panel.
@@ -17,6 +18,7 @@ This is not a generic VPS monitor. It is built for users who still have budget V
 ## What It Does
 
 - Manage multiple SolusVM VPS API profiles.
+- Select SolusVM v1 or experimental SolusVM 2 per server profile.
 - View provider-side status and resource information.
 - Check bandwidth, memory, disk, IP, hostname, and node details when available from the API.
 - Run reboot, boot, and shutdown actions from the popup.
@@ -41,7 +43,7 @@ All configuration stays in your browser.
 - No user account.
 - No tracking or analytics.
 - No third-party proxy.
-- API URL, API Key, and API Hash are stored locally with `chrome.storage.local`.
+- API URL, API Key/API Token, and API Hash/API Secret are stored locally with `chrome.storage.local`.
 - API requests are sent directly from your browser to the SolusVM endpoint you configure.
 
 See [PRIVACY.md](./PRIVACY.md) for the full privacy policy.
@@ -77,10 +79,19 @@ https://panel.example.com/api/client/command.php
 
 If your provider hides or disables SolusVM Client API access, this extension cannot manage that VPS.
 
+For SolusVM 2, select `SolusVM 2 (experimental)` in settings and use an API token. A full virtual server API URL is recommended, for example:
+
+```text
+https://panel.example.com/api/v1/servers/123
+```
+
+SolusVM 2 support is experimental because providers may expose different endpoint shapes and response fields. Please open an issue with redacted API responses if your provider does not work.
+
 ## Technical Notes
 
 - Chrome Extension Manifest V3.
 - SolusVM V1 Client API.
+- Experimental SolusVM 2 REST API driver.
 - Vanilla JavaScript, HTML, and CSS.
 - No framework and no build step.
 - Background service worker handles API requests.
