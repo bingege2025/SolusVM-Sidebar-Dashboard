@@ -550,7 +550,8 @@ function renderServerInfo(status, info, t, main) {
   main = main || $('main');
   if (!main) return;
   console.log('[DEBUG] renderServerInfo: status =', status, 'info =', info);
-  const isOnline = status.statusmsg === 'online' || status.vmstate === 'online' || status.status === 'online' || status.vmstate === 'running';
+  const state = String(status.statusmsg || status.vmstate || status.status || '').toLowerCase();
+  const isOnline = ['online', 'running', 'started', 'active'].includes(state);
 
   main.innerHTML = `
     <div class="content">
@@ -582,11 +583,19 @@ function renderServerInfo(status, info, t, main) {
 
   applyPrivacyMode();
 
+  const hostname = info.hostname || '-';
+
   $('refreshBtn').addEventListener('click', () => refreshInfo(t, main, $('statusBar'), true));
-  $('rebootBtn').addEventListener('click', () => doAction('reboot', t('reboot'), t, main));
+  $('rebootBtn').addEventListener('click', () => {
+    const msg = t('confirmReboot', { hostname }).replace('{hostname}', hostname);
+    if (confirm(msg)) doAction('reboot', t('reboot'), t, main);
+  });
   if (isOnline) {
     const btn = $('shutdownBtn');
-    if (btn) btn.addEventListener('click', () => doAction('shutdown', t('shutdown'), t, main));
+    if (btn) btn.addEventListener('click', () => {
+      const msg = t('confirmShutdown', { hostname }).replace('{hostname}', hostname);
+      if (confirm(msg)) doAction('shutdown', t('shutdown'), t, main);
+    });
   } else {
     const btn = $('bootBtn');
     if (btn) btn.addEventListener('click', () => doAction('boot', t('boot'), t, main));

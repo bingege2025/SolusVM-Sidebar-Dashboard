@@ -110,6 +110,32 @@ function applyTranslations() {
   }
   
   renderServerList();
+  updatePanelHelp();
+}
+
+function updatePanelHelp() {
+  const panelType = $('panelType') ? $('panelType').value : 'solusvm';
+  if (panelType === 'solusvm2') {
+    $('i18n_labelUrl').textContent = t('labelUrlV2');
+    $('i18n_hintUrl').textContent = t('hintUrlV2');
+    $('i18n_labelKey').textContent = t('labelKeyV2');
+    $('i18n_hintKey').textContent = t('hintKeyV2');
+    $('i18n_labelHash').textContent = t('labelHashV2');
+    $('i18n_hintHash').textContent = t('hintHashV2');
+    $('apiUrl').placeholder = t('placeholderUrlV2');
+    $('apiKey').placeholder = t('placeholderKeyV2');
+    $('apiHash').placeholder = t('placeholderHashV2');
+  } else {
+    $('i18n_labelUrl').textContent = t('labelUrl');
+    $('i18n_hintUrl').textContent = t('hintUrl');
+    $('i18n_labelKey').textContent = t('labelKey');
+    $('i18n_hintKey').textContent = t('hintKey');
+    $('i18n_labelHash').textContent = t('labelHash');
+    $('i18n_hintHash').textContent = t('hintHash');
+    $('apiUrl').placeholder = t('placeholderUrl');
+    $('apiKey').placeholder = t('placeholderKey');
+    $('apiHash').placeholder = t('placeholderHash');
+  }
 }
 
 // Render server list
@@ -191,6 +217,7 @@ function selectServer(id) {
     $('apiHash').value = s.apiHash;
     // Load panel_type with fallback to 'solusvm'
     $('panelType').value = s.panel_type || 'solusvm';
+    updatePanelHelp();
     $('serverTags').value = normalizeTagList(s.tags).join(', ');
     
     document.querySelectorAll('.server-item').forEach(el => {
@@ -209,6 +236,7 @@ function showNewForm() {
   $('apiKey').value = '';
   $('apiHash').value = '';
   $('panelType').value = 'solusvm';
+  updatePanelHelp();
   $('serverTags').value = '';
   
   document.querySelectorAll('.server-item').forEach(el => {
@@ -317,7 +345,7 @@ function saveServer() {
   const apiHash = $('apiHash').value.trim();
   const panelType = $('panelType').value;
   
-  if (!name || !apiUrl || !apiKey || !apiHash) {
+  if (!name || !apiUrl || !apiKey || (panelType !== 'solusvm2' && !apiHash)) {
     showMsg(t('msgRequired'), false);
     return;
   }
@@ -412,15 +440,16 @@ function testConnection() {
   const apiUrl = $('apiUrl').value.trim();
   const apiKey = $('apiKey').value.trim();
   const apiHash = $('apiHash').value.trim();
+  const panelType = $('panelType').value;
   
-  if (!apiUrl || !apiKey || !apiHash) {
+  if (!apiUrl || !apiKey || (panelType !== 'solusvm2' && !apiHash)) {
     showMsg(t('msgRequired'), false);
     return;
   }
   
   showMsg(t('msgTesting'), true);
   
-  const tempConfig = { apiUrl, apiKey, apiHash, panel_type: $('panelType').value };
+  const tempConfig = { apiUrl, apiKey, apiHash, panel_type: panelType };
   
   try {
     chrome.runtime.sendMessage({ action: 'testConnection', config: tempConfig }, resp => {
@@ -455,6 +484,7 @@ function testConnection() {
 $('addBtn').addEventListener('click', showNewForm);
 $('saveBtn').addEventListener('click', saveServer);
 $('testBtn').addEventListener('click', testConnection);
+$('panelType').addEventListener('change', updatePanelHelp);
 $('languageSelect').addEventListener('change', e => {
   const selectedLang = e.target.value;
   chrome.storage.local.set({ lang: selectedLang }, () => {
