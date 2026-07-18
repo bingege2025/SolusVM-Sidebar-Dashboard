@@ -24,6 +24,7 @@ This is not a generic VPS monitor. It is built for users who still have budget V
 - Run reboot, boot, and shutdown actions from the popup.
 - Search and filter servers with tags.
 - Set a default server.
+- Export and import local configuration backups.
 - Use cached data first, then refresh in the background.
 - Switch between English and Simplified Chinese.
 - Blur sensitive fields with privacy mode for screenshots or screen sharing.
@@ -45,6 +46,7 @@ All configuration stays in your browser.
 - No third-party proxy.
 - API URL, API Key/API Token, and API Hash/API Secret are stored locally with `chrome.storage.local`.
 - API requests are sent directly from your browser to the SolusVM endpoint you configure.
+- Exported configuration files include API credentials. Keep them private.
 
 See [PRIVACY.md](./PRIVACY.md) for the full privacy policy.
 

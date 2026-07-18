@@ -5,11 +5,30 @@
   <title id="pageTitle">SolusVM VPS Dashboard</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { width: 380px; min-height: 200px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #fafafa; }
+    body { width: 380px; min-height: 200px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #fafafa; color: #333; }
     .header { background: linear-gradient(135deg, #4a90d9, #357abd); color: white; padding: 14px 16px; display: flex; justify-content: space-between; align-items: center; }
     .header h1 { font-size: 16px; font-weight: 600; }
     .header a { color: rgba(255,255,255,0.8); font-size: 18px; text-decoration: none; }
     .header a:hover { color: white; }
+    .header-actions { display: inline-flex; align-items: center; gap: 8px; }
+    .theme-toggle {
+      width: 28px;
+      height: 28px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid rgba(255,255,255,0.24);
+      border-radius: 6px;
+      background: rgba(255,255,255,0.14);
+      color: white;
+      font-size: 14px;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .theme-toggle:hover {
+      background: rgba(255,255,255,0.24);
+      border-color: rgba(255,255,255,0.38);
+    }
     
     .status-bar { padding: 10px 16px; background: #e3f2fd; font-size: 12px; color: #1565c0; border-bottom: 1px solid #bbdefb; }
     
@@ -31,6 +50,52 @@
     .btn-boot { background: #4caf50; color: white; }
     .btn-shutdown { background: #f44336; color: white; }
     .btn-refresh { background: #4a90d9; color: white; }
+
+    .confirm-panel {
+      margin-top: 12px;
+      padding: 12px;
+      border: 1px solid #ffd8a8;
+      border-radius: 8px;
+      background: #fff8ee;
+      color: #6d4700;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+    .confirm-panel.danger {
+      border-color: #ffcdd2;
+      background: #fff5f6;
+      color: #8a1f2d;
+    }
+    .confirm-message {
+      white-space: pre-line;
+      margin-bottom: 10px;
+    }
+    .confirm-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+    .confirm-actions button {
+      flex: 0 0 auto;
+      padding: 7px 12px;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .btn-confirm-cancel {
+      background: white;
+      color: #555;
+      border-color: #ddd !important;
+    }
+    .btn-confirm-action {
+      background: #ff9800;
+      color: white;
+    }
+    .btn-confirm-action.danger {
+      background: #f44336;
+    }
     
     .loading { text-align: center; padding: 40px; color: #999; font-size: 14px; }
     .error { text-align: center; padding: 24px; color: #c62828; font-size: 13px; }
@@ -252,6 +317,108 @@
       color: #cbd5e0;
       user-select: none;
     }
+
+    body.dark {
+      background: #121821;
+      color: #dbe4ef;
+    }
+    body.dark .status-bar {
+      background: #172538;
+      color: #9fc8f5;
+      border-bottom-color: #24384f;
+    }
+    body.dark .info-grid .label {
+      color: #95a3b5;
+    }
+    body.dark .info-grid .value {
+      color: #e6edf6;
+    }
+    body.dark .status-badge.online {
+      background: #173820;
+      color: #8ce99a;
+    }
+    body.dark .status-badge.offline {
+      background: #3a1c25;
+      color: #ff9aaa;
+    }
+    body.dark .select-dropdown {
+      background: #182231;
+      border-color: #2c3a4d;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+    }
+    body.dark .search-input {
+      background: #101722;
+      border-color: #314054;
+      color: #e6edf6;
+    }
+    body.dark .privacy-toggle {
+      background: #101722;
+      border-color: #314054;
+      color: #a8b7c9;
+    }
+    body.dark .privacy-toggle:hover,
+    body.dark .privacy-toggle.active {
+      background: #172b42;
+      border-color: #4a90d9;
+      color: #9fc8f5;
+    }
+    body.dark .tag-pill {
+      background: #101722;
+      border-color: #314054;
+      color: #b9c6d6;
+    }
+    body.dark .tag-pill:hover,
+    body.dark .tag-pill.active {
+      background: #172b42;
+      border-color: #4a90d9;
+      color: #9fc8f5;
+    }
+    body.dark .select-options::-webkit-scrollbar-thumb {
+      background: #465468;
+    }
+    body.dark .select-option {
+      color: #dbe4ef;
+    }
+    body.dark .select-option:hover {
+      background: #202c3b;
+    }
+    body.dark .select-option.selected {
+      background: #172b42;
+      color: #9fc8f5;
+    }
+    body.dark .select-option.no-results,
+    body.dark .loading,
+    body.dark .no-config {
+      color: #95a3b5;
+    }
+    body.dark .confirm-panel {
+      background: #322413;
+      border-color: #7a521a;
+      color: #ffd8a8;
+    }
+    body.dark .confirm-panel.danger {
+      background: #351a22;
+      border-color: #7a2d3b;
+      color: #ffb3bf;
+    }
+    body.dark .btn-confirm-cancel {
+      background: #101722;
+      color: #dbe4ef;
+      border-color: #314054 !important;
+    }
+    body.dark .feedback-footer {
+      background: #101722;
+      border-top-color: #243042;
+    }
+    body.dark .feedback-footer a {
+      color: #95a3b5;
+    }
+    body.dark .feedback-footer a:hover {
+      color: #9fc8f5;
+    }
+    body.dark .feedback-footer .divider {
+      color: #465468;
+    }
   </style>
 </head>
 <body>
@@ -280,7 +447,10 @@
         </div>
       </div>
     </div>
-    <a href="#" id="settingsBtn" title="Settings">⚙️</a>
+    <div class="header-actions">
+      <button type="button" id="themeToggle" class="theme-toggle" title="Toggle dark mode" aria-label="Toggle dark mode">☾</button>
+      <a href="#" id="settingsBtn" title="Settings">⚙️</a>
+    </div>
   </div>
   <div id="statusBar" class="status-bar" style="display:none;"></div>
   <div id="main"></div>

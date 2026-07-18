@@ -2,6 +2,7 @@
 
 const $ = id => document.getElementById(id);
 let privacyModeEnabled = false;
+let darkModeEnabled = false;
 
 // Global exception handlers
 window.onerror = function(message, source, lineno, colno, error) {
@@ -193,6 +194,27 @@ function setPrivacyMode(enabled, persist) {
   }
 }
 
+function updateThemeToggle() {
+  const btn = $('themeToggle');
+  if (!btn) return;
+  btn.textContent = darkModeEnabled ? '☀' : '☾';
+  btn.title = darkModeEnabled ? window.t('lightMode') : window.t('darkMode');
+  btn.setAttribute('aria-label', btn.title);
+}
+
+function applyTheme() {
+  document.body.classList.toggle('dark', darkModeEnabled);
+  updateThemeToggle();
+}
+
+function setDarkMode(enabled, persist) {
+  darkModeEnabled = Boolean(enabled);
+  applyTheme();
+  if (persist) {
+    chrome.storage.local.set({ darkModeEnabled });
+  }
+}
+
 // ---- UI binding ----
 
 const settingsBtn = $('settingsBtn');
@@ -203,11 +225,41 @@ if (settingsBtn) {
   });
 }
 
+const themeToggle = $('themeToggle');
+if (themeToggle) {
+  themeToggle.addEventListener('click', e => {
+    e.preventDefault();
+    setDarkMode(!darkModeEnabled, true);
+  });
+}
+
 // ---- Feedback section binding ----
 
 const GITHUB_ISSUES_URL = 'https://github.com/bingege2025/SolusVM-Sidebar-Dashboard/issues';
+const GITHUB_NEW_ISSUE_URL = 'https://github.com/bingege2025/SolusVM-Sidebar-Dashboard/issues/new';
 const FORUM_URL = 'https://lowendtalk.com/discussion/217453/idea-discussion-a-minimalist-chrome-sidepanel-dashboard-for-managing-multi-solusvm-racknerd-apis#latest';
 const DEV_EMAIL = 'renyanbin.wang@gmail.com';
+
+function buildIssueUrl() {
+  const version = chrome.runtime.getManifest().version;
+  const title = '[Feedback] ';
+  const body = [
+    'What happened?',
+    '',
+    '',
+    'Provider / panel:',
+    '- Provider:',
+    '- Panel type: SolusVM v1 / SolusVM 2',
+    '',
+    'Extension:',
+    `- Version: ${version}`,
+    `- Language: ${window.currentLang || 'en'}`,
+    '',
+    'Please do not include API keys, API hashes, tokens, IP addresses, hostnames, or other sensitive information.'
+  ].join('\n');
+
+  return `${GITHUB_NEW_ISSUE_URL}?title=${encodeURIComponent(title)}&body=${encodeURIComponent(body)}`;
+}
 
 function initFeedbackSection() {
   const t = window.t;
@@ -231,7 +283,7 @@ const feedbackBugBtn = $('feedbackBugBtn');
 if (feedbackBugBtn) {
   feedbackBugBtn.addEventListener('click', e => {
     e.preventDefault();
-    chrome.tabs.create({ url: GITHUB_ISSUES_URL });
+    chrome.tabs.create({ url: buildIssueUrl() });
   });
 }
 
@@ -264,7 +316,7 @@ if (feedbackEmailBtn) {
   const t = window.t;
 
   // 将 lang 与其他数据一起读取，确保渲染前语言已就绪
-  safeStorageGet(['servers', 'currentServerId', 'defaultServerId', 'tags', 'privacyModeEnabled', 'apiUrl', 'apiKey', 'apiHash', 'lang'], data => {
+  safeStorageGet(['servers', 'currentServerId', 'defaultServerId', 'tags', 'privacyModeEnabled', 'darkModeEnabled', 'apiUrl', 'apiKey', 'apiHash', 'lang'], data => {
     if (!data) {
       // Storage timed out or errored — show retry prompt
       main.innerHTML = `
@@ -279,6 +331,8 @@ if (feedbackEmailBtn) {
 
     // 第一时间设置语言，确保后续所有 t() 调用使用正确的语言
     window.currentLang = data.lang || 'en';
+    darkModeEnabled = Boolean(data.darkModeEnabled);
+    applyTheme();
 
     // 更新所有静态 UI 文本
     if (settingsBtn) settingsBtn.title = t('settings');
@@ -579,6 +633,7 @@ function renderServerInfo(status, info, t, main) {
           : `<button class="btn-boot" id="bootBtn">${t('btnBoot')}</button>`
         }
       </div>
+      <div id="confirmPanelHost"></div>
     </div>`;
 
   applyPrivacyMode();
@@ -587,18 +642,53 @@ function renderServerInfo(status, info, t, main) {
 
   $('refreshBtn').addEventListener('click', () => refreshInfo(t, main, $('statusBar'), true));
   $('rebootBtn').addEventListener('click', () => {
-    const msg = t('confirmReboot', { hostname }).replace('{hostname}', hostname);
-    if (confirm(msg)) doAction('reboot', t('reboot'), t, main);
+    showInlineConfirm({
+      message: t('confirmReboot', { hostname }),
+      actionLabel: t('btnReboot'),
+      danger: false,
+      onConfirm: () => doAction('reboot', t('reboot'), t, main)
+    });
   });
   if (isOnline) {
     const btn = $('shutdownBtn');
     if (btn) btn.addEventListener('click', () => {
-      const msg = t('confirmShutdown', { hostname }).replace('{hostname}', hostname);
-      if (confirm(msg)) doAction('shutdown', t('shutdown'), t, main);
+      showInlineConfirm({
+        message: t('confirmShutdown', { hostname }),
+        actionLabel: t('btnShutdown'),
+        danger: true,
+        onConfirm: () => doAction('shutdown', t('shutdown'), t, main)
+      });
     });
   } else {
     const btn = $('bootBtn');
     if (btn) btn.addEventListener('click', () => doAction('boot', t('boot'), t, main));
+  }
+}
+
+function showInlineConfirm({ message, actionLabel, danger, onConfirm }) {
+  const host = $('confirmPanelHost');
+  if (!host) return;
+  host.innerHTML = `
+    <div class="confirm-panel ${danger ? 'danger' : ''}">
+      <div class="confirm-message">${escapeHtml(message)}</div>
+      <div class="confirm-actions">
+        <button type="button" class="btn-confirm-cancel" id="confirmCancelBtn">${escapeHtml(window.t('btnCancel'))}</button>
+        <button type="button" class="btn-confirm-action ${danger ? 'danger' : ''}" id="confirmActionBtn">${escapeHtml(actionLabel)}</button>
+      </div>
+    </div>`;
+
+  const cancelBtn = $('confirmCancelBtn');
+  const actionBtn = $('confirmActionBtn');
+  if (cancelBtn) {
+    cancelBtn.addEventListener('click', () => {
+      host.innerHTML = '';
+    });
+  }
+  if (actionBtn) {
+    actionBtn.addEventListener('click', () => {
+      host.innerHTML = '';
+      onConfirm();
+    });
   }
 }
 

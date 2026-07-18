@@ -14,6 +14,27 @@
       margin-bottom: 24px;
     }
     h1 { font-size: 22px; color: #1a1a1a; display: flex; align-items: center; gap: 8px; margin-bottom: 0; }
+    .header-actions { display: inline-flex; align-items: center; gap: 10px; }
+    .theme-toggle {
+      width: 32px;
+      height: 32px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid #dcdcdc;
+      border-radius: 8px;
+      background: white;
+      color: #526071;
+      font-size: 14px;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+      transition: all 0.2s;
+    }
+    .theme-toggle:hover {
+      border-color: #4a90d9;
+      color: #1565c0;
+      box-shadow: 0 2px 8px rgba(74,144,217,0.1);
+    }
     
     .lang-select {
       padding: 6px 12px;
@@ -69,6 +90,13 @@
     
     .btn-add { width: 100%; padding: 10px; border: 1px dashed #4a90d9; background: #f4f8fc; color: #4a90d9; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; text-align: center; transition: all 0.2s; }
     .btn-add:hover { background: #eef5fc; border-style: solid; }
+
+    .config-tools { border-top: 1px solid #eef0f2; padding-top: 14px; display: flex; flex-direction: column; gap: 8px; }
+    .config-tools-title { font-size: 12px; font-weight: 700; color: #555; }
+    .config-tools-hint { font-size: 11px; line-height: 1.45; color: #999; }
+    .config-tools-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .btn-tool { padding: 8px 10px; border: 1px solid #dcdcdc; background: #fff; color: #444; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+    .btn-tool:hover { border-color: #4a90d9; color: #2f75b5; background: #f7faff; }
     
     .form-title { font-size: 16px; font-weight: 600; margin-bottom: 20px; color: #333; }
     .form-group { margin-bottom: 16px; }
@@ -86,18 +114,107 @@
     .msg { margin-top: 16px; padding: 10px 14px; border-radius: 6px; font-size: 13px; display: none; line-height: 1.4; word-break: break-all; }
     .msg.ok { display: block; background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; }
     .msg.err { display: block; background: #fce4ec; color: #c62828; border: 1px solid #ffcdd2; }
+
+    body.dark {
+      background: #121821;
+      color: #dbe4ef;
+    }
+    body.dark h1 {
+      color: #f2f6fb;
+    }
+    body.dark .card {
+      background: #182231;
+      border-color: #263448;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.22);
+    }
+    body.dark .lang-select,
+    body.dark .theme-toggle,
+    body.dark input,
+    body.dark select {
+      background: #101722;
+      border-color: #314054;
+      color: #e6edf6;
+    }
+    body.dark .lang-select:hover,
+    body.dark .theme-toggle:hover,
+    body.dark input:focus,
+    body.dark select:focus {
+      border-color: #4a90d9;
+      box-shadow: 0 0 0 3px rgba(74,144,217,0.16);
+    }
+    body.dark .server-item {
+      background: #101722;
+      border-color: #2a384b;
+    }
+    body.dark .server-item:hover,
+    body.dark .server-item.active {
+      background: #172b42;
+      border-color: #4a90d9;
+    }
+    body.dark .server-name,
+    body.dark .form-title,
+    body.dark label {
+      color: #e6edf6;
+    }
+    body.dark .server-host,
+    body.dark .hint,
+    body.dark .config-tools-hint {
+      color: #95a3b5;
+    }
+    body.dark .config-tools {
+      border-top-color: #263448;
+    }
+    body.dark .config-tools-title {
+      color: #dbe4ef;
+    }
+    body.dark .btn-add {
+      background: #132338;
+      border-color: #4a90d9;
+      color: #9fc8f5;
+    }
+    body.dark .btn-add:hover,
+    body.dark .btn-tool:hover {
+      background: #172b42;
+    }
+    body.dark .btn-tool {
+      background: #101722;
+      border-color: #314054;
+      color: #dbe4ef;
+    }
+    body.dark .btn-icon:hover {
+      background: rgba(255,255,255,0.08);
+    }
+    body.dark .btn-icon.del:hover {
+      background: #351a22;
+    }
+    body.dark .btn-icon.star:hover {
+      background: #342912;
+    }
+    body.dark .msg.ok {
+      background: #173820;
+      color: #8ce99a;
+      border-color: #285c35;
+    }
+    body.dark .msg.err {
+      background: #3a1c25;
+      color: #ff9aaa;
+      border-color: #6a2b39;
+    }
   </style>
 </head>
 <body>
   <div class="header-container">
     <h1 id="i18n_title">⚙️ SolusVM VPS · Config Center</h1>
-    <select id="languageSelect" class="lang-select">
-      <option value="zh">简体中文</option>
-      <option value="en">English</option>
-      <option value="de">Deutsch</option>
-      <option value="fr">Français</option>
-      <option value="ru">Русский</option>
-    </select>
+    <div class="header-actions">
+      <button type="button" id="themeToggle" class="theme-toggle" title="Toggle dark mode" aria-label="Toggle dark mode">☾</button>
+      <select id="languageSelect" class="lang-select">
+        <option value="zh">简体中文</option>
+        <option value="en">English</option>
+        <option value="de">Deutsch</option>
+        <option value="fr">Français</option>
+        <option value="ru">Русский</option>
+      </select>
+    </div>
   </div>
   
   <div class="container">
@@ -106,6 +223,15 @@
       <button id="addBtn" class="btn-add">➕ Add New Server</button>
       <div id="serverList" style="display: flex; flex-direction: column; gap: 10px; max-height: 460px; overflow-y: auto; padding-right: 2px;">
         <!-- Server list rendered dynamically -->
+      </div>
+      <div class="config-tools">
+        <div id="i18n_configToolsTitle" class="config-tools-title">Config Backup</div>
+        <div id="i18n_configToolsHint" class="config-tools-hint">Exported files include API credentials. Keep them private.</div>
+        <div class="config-tools-actions">
+          <button id="exportConfigBtn" class="btn-tool" type="button">Export</button>
+          <button id="importConfigBtn" class="btn-tool" type="button">Import</button>
+        </div>
+        <input id="importConfigFile" type="file" accept="application/json,.json" style="display:none;">
       </div>
     </div>
     
