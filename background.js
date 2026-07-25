@@ -1265,7 +1265,8 @@ function normalizeEC2Server(raw) {
 const _ec2Inflight = new Map();
 
 async function fetchEC2(region, accessKeyId, secretAccessKey, params) {
-  const cacheKey = `${region}|${params.Action || ''}|${params.InstanceId || ''}`;
+  const instanceIdParam = params.InstanceId || params['InstanceId.1'] || '';
+  const cacheKey = `${region}|${params.Action || ''}|${instanceIdParam}`;
   if (_ec2Inflight.has(cacheKey)) {
     console.log('[EC2] dedup — reusing in-flight request:', cacheKey);
     return await _ec2Inflight.get(cacheKey);
@@ -1336,6 +1337,7 @@ async function fetchEC2(region, accessKeyId, secretAccessKey, params) {
     _ec2Inflight.delete(cacheKey);
   }
 }
+
 async function getEC2Single(config) {
   requireEC2Config(config);
   const { region, targetInstanceId } = parseEC2RegionAndInstance(config.apiUrl);
@@ -1385,28 +1387,28 @@ async function callEC2Action(action, configOverride) {
   const apiAction = actionMap[action];
   if (!apiAction) throw new Error(`Unsupported EC2 action: ${action}`);
 
-  // If user specified an instance ID, use it directly
-  if (targetInstanceId) {
-    return await fetchEC2(region, config.apiKey, config.apiHash, {
-      Action: apiAction,
-      'InstanceId.1': targetInstanceId
-    });
+  // 1. If user specified an instance ID in URL, use it
+  let instanceId = targetInstanceId;
+
+  // 2. If config already has server ID starting with i-, reuse directly
+  if (!instanceId && config.id && String(config.id).startsWith('i-')) {
+    instanceId = config.id;
   }
 
-  // Otherwise discover from list
-  const listData = await fetchEC2(region, config.apiKey, config.apiHash, { Action: 'DescribeInstances' });
-  const reservations = listData.Reservations || [];
-  const instances = reservations.flatMap(r => r.Instances || []);
-  const runningInstances = instances.filter(i => {
-    const state = (i.State && i.State.Name) || '';
-    return state !== 'terminated';
-  });
-  if (runningInstances.length === 0) throw new Error('No EC2 instances found');
-  if (runningInstances.length > 1) throw new Error('Multiple instances found — specify instance ID in URL: region/instance-id');
+  // 3. Otherwise discover single running instance
+  if (!instanceId) {
+    const listData = await fetchEC2(region, config.apiKey, config.apiHash, { Action: 'DescribeInstances' });
+    const reservations = listData.Reservations || [];
+    const instances = reservations.flatMap(r => r.Instances || []);
+    const runningInstances = instances.filter(i => ((i.State && i.State.Name) || '') !== 'terminated');
+    if (runningInstances.length === 0) throw new Error('No EC2 instances found');
+    if (runningInstances.length > 1) throw new Error('Multiple instances found — specify instance ID in URL: region/instance-id');
+    instanceId = runningInstances[0].InstanceId;
+  }
 
   return await fetchEC2(region, config.apiKey, config.apiHash, {
     Action: apiAction,
-    'InstanceId.1': runningInstances[0].InstanceId
+    'InstanceId.1': instanceId
   });
 }
 
