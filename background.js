@@ -1058,9 +1058,31 @@ function normalizeLightsailServer(raw) {
   };
 }
 
+function parseAWSRegion(raw) {
+  let cleaned = (raw || '').trim();
+  cleaned = cleaned.replace(/^https?:\/\//i, '');
+  const regionMatch = cleaned.match(/([a-z]{2}-[a-z]+-\d+)/i);
+  if (regionMatch) {
+    return regionMatch[1].toLowerCase();
+  }
+  return cleaned.split('/')[0].split('?')[0].toLowerCase() || 'us-east-1';
+}
+
+function parseEC2RegionAndInstance(rawUrl) {
+  const region = parseAWSRegion(rawUrl);
+  let targetInstanceId = null;
+  let cleaned = (rawUrl || '').trim().replace(/^https?:\/\//i, '');
+
+  const instMatch = cleaned.match(/(i-[0-9a-fA-Z]+)/);
+  if (instMatch) {
+    targetInstanceId = instMatch[1];
+  }
+  return { region, targetInstanceId };
+}
+
 async function getLightsailSingle(config) {
   requireLightsailConfig(config);
-  const region = config.apiUrl.trim();
+  const region = parseAWSRegion(config.apiUrl);
   const body = '{}';
   const { endpoint, headers } = await signAWSRequest(config.apiKey, config.apiHash, region, 'GetInstances', body);
 
@@ -1090,7 +1112,7 @@ async function getLightsailSingle(config) {
 async function callLightsailAction(action, configOverride) {
   const config = configOverride || await getActiveServerConfig();
   requireLightsailConfig(config);
-  const region = config.apiUrl.trim();
+  const region = parseAWSRegion(config.apiUrl);
 
   const actionMap = {
     'reboot': 'RebootInstance',
@@ -1117,7 +1139,7 @@ async function callLightsailAction(action, configOverride) {
   let data = {};
   if (text) {
     try { data = JSON.parse(text); } catch (e) {
-      throw new Error(`AWS Lightsail API returned non-JSON: ${text.substring(0, 200)}`);
+      throw new Error(`AWS Lightsail ${action} error: ${text.substring(0, 200)}`);
     }
   }
   if (!response.ok) {
@@ -1264,7 +1286,7 @@ async function fetchEC2(region, accessKeyId, secretAccessKey, params) {
       const endpointReachable = await probeEC2Endpoint(postRequest.endpoint);
       const hint = endpointReachable
         ? 'Endpoint reachable. Check AWS credentials (Access Key / Secret Key), permissions, or region.'
-        : 'Endpoint unreachable. Check network, VPN/proxy, or region name (e.g. us-east-1, ap-northeast-2).';
+        : `Endpoint unreachable (${postRequest.endpoint}). Check network, VPN/proxy, or region name (e.g. us-east-1, ap-northeast-2).`;
       throw new Error(`AWS EC2 network error: ${e.message || e}. ${hint}`);
     }
     const text = await response.text();
@@ -1316,15 +1338,7 @@ async function fetchEC2(region, accessKeyId, secretAccessKey, params) {
 }
 async function getEC2Single(config) {
   requireEC2Config(config);
-  let region = config.apiUrl.trim();
-  let targetInstanceId = null;
-
-  // Support "region/instance-id" format
-  const slashIdx = region.indexOf('/');
-  if (slashIdx > 0) {
-    targetInstanceId = region.substring(slashIdx + 1).trim();
-    region = region.substring(0, slashIdx).trim();
-  }
+  const { region, targetInstanceId } = parseEC2RegionAndInstance(config.apiUrl);
 
   const data = await fetchEC2(region, config.apiKey, config.apiHash, { Action: 'DescribeInstances' });
   const reservations = data.Reservations || [];
@@ -1361,14 +1375,7 @@ async function getEC2Single(config) {
 async function callEC2Action(action, configOverride) {
   const config = configOverride || await getActiveServerConfig();
   requireEC2Config(config);
-  let region = config.apiUrl.trim();
-  let targetInstanceId = null;
-
-  const slashIdx = region.indexOf('/');
-  if (slashIdx > 0) {
-    targetInstanceId = region.substring(slashIdx + 1).trim();
-    region = region.substring(0, slashIdx).trim();
-  }
+  const { region, targetInstanceId } = parseEC2RegionAndInstance(config.apiUrl);
 
   const actionMap = {
     'reboot': 'RebootInstances',
