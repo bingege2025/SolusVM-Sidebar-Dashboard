@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>SolusVM VPS Dashboard - Settings</title>
+  <title>VPS Dashboard — Settings</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; padding: 32px 24px; background: #f5f6f8; max-width: 860px; margin: 0 auto; color: #333; }
@@ -103,6 +103,25 @@
     label { display: block; font-weight: 600; margin-bottom: 6px; color: #555; font-size: 13px; }
     input, select { width: 100%; padding: 10px 12px; border: 1px solid #dcdcdc; border-radius: 8px; font-size: 14px; color: #333; transition: all 0.2s; background: white; }
     input:focus, select:focus { outline: none; border-color: #4a90d9; box-shadow: 0 0 0 3px rgba(74,144,217,0.15); }
+    .input-group { position: relative; }
+    .input-group input { padding-right: 40px; }
+    .toggle-vis {
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 16px;
+      padding: 4px;
+      line-height: 1;
+      color: #999;
+      transition: color 0.15s;
+    }
+    .toggle-vis:hover { color: #4a90d9; }
+    body.dark .toggle-vis { color: #6b7d95; }
+    body.dark .toggle-vis:hover { color: #9fc8f5; }
     .hint { font-size: 11px; color: #999; margin-top: 4px; }
     
     .form-actions { display: flex; gap: 10px; margin-top: 24px; }
@@ -204,7 +223,7 @@
 </head>
 <body>
   <div class="header-container">
-    <h1 id="i18n_title">⚙️ SolusVM VPS · Config Center</h1>
+    <h1 id="i18n_title">⚙️ VPS Dashboard · Config Center</h1>
     <div class="header-actions">
       <button type="button" id="themeToggle" class="theme-toggle" title="Toggle dark mode" aria-label="Toggle dark mode">☾</button>
       <select id="languageSelect" class="lang-select">
@@ -249,7 +268,14 @@
         <label id="i18n_labelPanelType">Panel Type</label>
         <select id="panelType">
           <option value="solusvm" selected>SolusVM v1</option>
-          <option value="solusvm2">SolusVM 2 (experimental)</option>
+          <option value="solusvm2">SolusVM v2 (experimental)</option>
+          <option value="virtfusion">VirtFusion (experimental)</option>
+          <option value="virtualizor">Virtualizor (experimental)</option>
+          <option value="proxmox">Proxmox VE (experimental)</option>
+          <option value="hetzner">Hetzner Cloud (experimental)</option>
+          <option value="digitalocean">DigitalOcean (experimental)</option>
+          <option value="lightsail">AWS Lightsail</option>
+          <option value="ec2">AWS EC2 (experimental)</option>
         </select>
         <div id="i18n_hintPanelType" class="hint">Select the control panel this VPS uses (more types coming soon)</div>
       </div>
@@ -262,13 +288,19 @@
       
       <div class="form-group">
         <label id="i18n_labelKey">API Key</label>
-        <input type="text" id="apiKey" placeholder="Enter API Key">
+        <div class="input-group">
+          <input type="password" id="apiKey" placeholder="Enter API Key">
+          <button type="button" class="toggle-vis" data-target="apiKey" title="Show/Hide">👁</button>
+        </div>
         <div id="i18n_hintKey" class="hint">Generate in your control panel → API tab</div>
       </div>
       
       <div class="form-group">
         <label id="i18n_labelHash">API Hash</label>
-        <input type="text" id="apiHash" placeholder="Enter API Hash">
+        <div class="input-group">
+          <input type="password" id="apiHash" placeholder="Enter API Hash">
+          <button type="button" class="toggle-vis" data-target="apiHash" title="Show/Hide">👁</button>
+        </div>
         <div id="i18n_hintHash" class="hint">Generate in your control panel → API tab</div>
       </div>
       
@@ -287,6 +319,7 @@
   </div>
 
   <script src="i18n.js"></script>
+  <script src="shared.js"></script>
   <script src="options.js"></script>
 </body>
 </html>

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title id="pageTitle">SolusVM VPS Dashboard</title>
+  <title id="pageTitle">VPS Dashboard</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { width: 380px; min-height: 200px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #fafafa; color: #333; }
@@ -96,13 +96,52 @@
     .btn-confirm-action.danger {
       background: #f44336;
     }
+
+    .bulk-bar {
+      display: flex;
+      gap: 6px;
+      padding: 10px 0 0;
+      border-top: 1px solid #edf2f7;
+      margin-top: 12px;
+    }
+    .bulk-bar button {
+      flex: 1;
+      padding: 8px 6px;
+      border: 1px solid #dcdcdc;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      background: white;
+      color: #555;
+      transition: all 0.15s;
+    }
+    .bulk-bar button:hover { border-color: #4a90d9; color: #2f75b5; }
+    .bulk-bar button.bulk-reboot:hover { border-color: #ff9800; color: #e68900; background: #fff8ee; }
+    .bulk-bar button.bulk-shutdown:hover { border-color: #f44336; color: #d32f2f; background: #fff5f6; }
+
+    body.dark .bulk-bar { border-top-color: #263448; }
+    body.dark .bulk-bar button { background: #101722; border-color: #314054; color: #a8b7c9; }
+    body.dark .bulk-bar button:hover { border-color: #4a90d9; color: #9fc8f5; }
+    body.dark .bulk-bar button.bulk-reboot:hover { border-color: #ff9800; color: #ffb74d; background: #2d2214; }
+    body.dark .bulk-bar button.bulk-shutdown:hover { border-color: #f44336; color: #ff8a80; background: #2d1a1e; }
+
+    .bulk-result {
+      margin-top: 8px;
+      font-size: 11px;
+      line-height: 1.6;
+    }
+    .bulk-result .ok { color: #2e7d32; }
+    .bulk-result .err { color: #c62828; }
+    body.dark .bulk-result .ok { color: #8ce99a; }
+    body.dark .bulk-result .err { color: #ff9aaa; }
     
     .loading { text-align: center; padding: 40px; color: #999; font-size: 14px; }
     .error { text-align: center; padding: 24px; color: #c62828; font-size: 13px; }
     .no-config { text-align: center; padding: 30px; color: #666; }
     .no-config a { color: #4a90d9; }
     .brand { display: flex; align-items: center; gap: 8px; flex: 1; }
-    .logo { font-size: 16px; line-height: 1; }
+    .logo { width: 22px; height: 22px; flex-shrink: 0; }
     .custom-select {
       position: relative;
       display: inline-block;
@@ -424,7 +463,7 @@
 <body>
   <div class="header">
     <div class="brand">
-      <span class="logo">🖥️</span>
+      <img class="logo" src="icons/icon48.png" width="22" height="22" alt="">
       <div class="custom-select" id="customSelect">
         <div class="select-trigger" id="selectTrigger">
           <span id="selectedServerName">Loading servers...</span>
@@ -474,6 +513,7 @@
   </div>
 
   <script src="i18n.js"></script>
+  <script src="shared.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

@@ -4,7 +4,7 @@
     "description": "The name of the extension"
   },
   "appDescription": {
-    "message": "A lightweight, 100% private sidebar monitor for SolusVM VPS. View status, reboot, and manage multiple servers in your browser.",
+    "message": "A lightweight, 100% private sidebar monitor for SolusVM, VirtFusion & AWS Lightsail VPS. View status, reboot, and manage multiple servers in your browser.",
     "description": "The description of the extension"
   }
 }
