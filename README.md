@@ -8,9 +8,8 @@ This is not a generic VPS monitor. It is built for users who still have budget V
 
 ## Who This Is For
 
-- You manage one or more VPS instances that expose the SolusVM V1 Client API.
-- You want to test experimental SolusVM 2 REST API support.
-- Your provider still uses SolusVM, for example some budget VPS providers.
+- You manage one or more VPS instances that expose the SolusVM V1 Client API, SolusVM 2 REST API, or VirtFusion API.
+- Your provider uses SolusVM v1/v2 or VirtFusion panels.
 - You want quick status/resource checks from Chrome.
 - You want reboot, boot, and shutdown actions without loading the full SolusVM panel.
 - You prefer a local-only tool with no account, no backend, and no telemetry.
@@ -18,7 +17,7 @@ This is not a generic VPS monitor. It is built for users who still have budget V
 ## What It Does
 
 - Manage multiple SolusVM VPS API profiles.
-- Select SolusVM v1 or experimental SolusVM 2 per server profile.
+- Select SolusVM v1, SolusVM 2, or VirtFusion per server profile.
 - View provider-side status and resource information.
 - Check bandwidth, memory, disk, IP, hostname, and node details when available from the API.
 - Run reboot, boot, and shutdown actions from the popup.
@@ -31,7 +30,7 @@ This is not a generic VPS monitor. It is built for users who still have budget V
 
 ## What It Does Not Do
 
-- It does not support Virtualizor, Proxmox, SSH-based monitoring, or generic VPS providers.
+- It does not support Virtualizor, Proxmox, SSH-based monitoring, or generic VPS providers (except SolusVM v1/v2 and VirtFusion).
 - It does not install an agent inside your VPS.
 - It does not replace real monitoring systems such as Beszel, Prometheus, Uptime Kuma, or Netdata.
 - It does not collect analytics, browsing history, server credentials, or telemetry.

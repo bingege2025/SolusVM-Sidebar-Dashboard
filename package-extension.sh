@@ -27,7 +27,9 @@ zip -r "$OUTPUT" . \
   -x "*.zip" \
   -x ".gitignore" \
   -x ".agents/*" \
-  -x "tests/*"
+  -x "tests/*" \
+  -x "test-*.js" \
+  -x "shared.js"
 
 if [ -f "$OUTPUT" ]; then
   echo "✅ 打包成功: $OUTPUT ($(du -h "$OUTPUT" | cut -f1))"

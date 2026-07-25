@@ -130,45 +130,7 @@ function escapeHtml(str) {
                     .replace(/'/g, '&#039;');
 }
 
-function normalizeTagList(value) {
-  const rawTags = Array.isArray(value)
-    ? value
-    : String(value || '').split(/[\s,，]+/);
-
-  const seen = new Set();
-  return rawTags
-    .map(tag => String(tag).trim())
-    .filter(Boolean)
-    .filter(tag => {
-      const key = tag.toLowerCase();
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-}
-
-function normalizeServers(list) {
-  return (Array.isArray(list) ? list : []).map(server => ({
-    id: server.id || 'server_' + Math.random().toString(36).substr(2, 9),
-    name: server.name || 'Default Server',
-    apiUrl: (server.apiUrl || '').trim(),
-    apiKey: (server.apiKey || '').trim(),
-    apiHash: (server.apiHash || '').trim(),
-    panel_type: server.panel_type || 'solusvm',
-    tags: normalizeTagList(server.tags)
-  }));
-}
-
-function getAllTagsFromServers(list) {
-  const seen = new Map();
-  list.forEach(server => {
-    normalizeTagList(server.tags).forEach(tag => {
-      const key = tag.toLowerCase();
-      if (!seen.has(key)) seen.set(key, tag);
-    });
-  });
-  return Array.from(seen.values()).sort((a, b) => a.localeCompare(b));
-}
+// normalizeTagList, normalizeServers, getAllTagsFromServers → shared.js
 
 function updatePrivacyToggle() {
   const btn = $('privacyToggle');
@@ -249,7 +211,7 @@ function buildIssueUrl() {
     '',
     'Provider / panel:',
     '- Provider:',
-    '- Panel type: SolusVM v1 / SolusVM 2',
+    'Panel type: (auto-detected)',
     '',
     'Extension:',
     `- Version: ${version}`,
@@ -300,7 +262,7 @@ if (feedbackEmailBtn) {
   feedbackEmailBtn.addEventListener('click', e => {
     e.preventDefault();
     const version = chrome.runtime.getManifest().version;
-    const subject = encodeURIComponent(`SolusVM Extension v${version} - Feedback`);
+    const subject = encodeURIComponent(`VPS Dashboard v${version} - Feedback`);
     const body = encodeURIComponent(`\n\n---\nExtension Version: v${version}\nBrowser: ${navigator.userAgent}\nTimestamp: ${new Date().toISOString()}`);
     chrome.tabs.create({ url: `mailto:${DEV_EMAIL}?subject=${subject}&body=${body}` });
   });
@@ -341,7 +303,7 @@ if (feedbackEmailBtn) {
     updatePrivacyToggle();
     initFeedbackSection();
     // 更新页面标题
-    document.title = t('popupTitle') || 'SolusVM VPS Dashboard';
+    document.title = t('popupTitle') || 'VPS Dashboard';
 
     let list = data.servers || [];
     // Smooth compatibility migration from legacy flat keys
@@ -567,18 +529,15 @@ function loadFresh(currentId, cacheKey, cachedData, t, main, statusBar) {
     main.innerHTML = `<div class="loading">${t('loading')}</div>`;
   }
 
-  Promise.all([
-    sendMessage('getStatus'),
-    sendMessage('getInfo')
-  ]).then(([statusRes, infoRes]) => {
-    if (!statusRes.success) throw new Error(statusRes.error);
+  // Single call — getStatus and getInfo return same data for all panels
+  sendMessage('getInfo').then(infoRes => {
     if (!infoRes.success) throw new Error(infoRes.error);
 
     const freshData = {
       ...infoRes.data,
-      status: statusRes.data.status,
-      statusmsg: statusRes.data.statusmsg,
-      vmstate: statusRes.data.vmstate,
+      status: infoRes.data.status,
+      statusmsg: infoRes.data.statusmsg,
+      vmstate: infoRes.data.vmstate,
       lastUpdated: new Date().toLocaleTimeString()
     };
 
@@ -633,6 +592,12 @@ function renderServerInfo(status, info, t, main) {
           : `<button class="btn-boot" id="bootBtn">${t('btnBoot')}</button>`
         }
       </div>
+      <div class="bulk-bar">
+        <button id="bulkRefreshBtn">🔄 ${t('bulkRefresh')}</button>
+        <button class="bulk-reboot" id="bulkRebootBtn">🔁 ${t('bulkReboot')}</button>
+        <button class="bulk-shutdown" id="bulkShutdownBtn">⏹ ${t('bulkShutdown')}</button>
+      </div>
+      <div class="bulk-result" id="bulkResultHost"></div>
       <div id="confirmPanelHost"></div>
     </div>`;
 
@@ -663,6 +628,28 @@ function renderServerInfo(status, info, t, main) {
     const btn = $('bootBtn');
     if (btn) btn.addEventListener('click', () => doAction('boot', t('boot'), t, main));
   }
+
+  // Bulk action buttons
+  const bulkRefreshBtn = $('bulkRefreshBtn');
+  if (bulkRefreshBtn) bulkRefreshBtn.addEventListener('click', () => doBulkAction('bulkRefresh', t('bulkRefresh'), t, main));
+  const bulkRebootBtn = $('bulkRebootBtn');
+  if (bulkRebootBtn) bulkRebootBtn.addEventListener('click', () => {
+    showInlineConfirm({
+      message: t('confirmBulkReboot'),
+      actionLabel: t('bulkReboot'),
+      danger: false,
+      onConfirm: () => doBulkAction('bulkReboot', t('bulkReboot'), t, main)
+    });
+  });
+  const bulkShutdownBtn = $('bulkShutdownBtn');
+  if (bulkShutdownBtn) bulkShutdownBtn.addEventListener('click', () => {
+    showInlineConfirm({
+      message: t('confirmBulkShutdown'),
+      actionLabel: t('bulkShutdown'),
+      danger: true,
+      onConfirm: () => doBulkAction('bulkShutdown', t('bulkShutdown'), t, main)
+    });
+  });
 }
 
 function showInlineConfirm({ message, actionLabel, danger, onConfirm }) {
@@ -707,5 +694,34 @@ function doAction(action, label, t, main) {
     } else {
       main.innerHTML = `<div class="error">${t('actionFail', { action: label, error: res.error })}</div>`;
     }
+  });
+}
+
+// ---- Bulk operations ----
+
+function doBulkAction(action, label, t, main) {
+  t = t || window.t;
+  main = main || $('main');
+  const resultHost = $('bulkResultHost');
+  if (resultHost) resultHost.innerHTML = `<span style="color:#999;">⏳ ${label}...</span>`;
+
+  sendMessage(action).then(res => {
+    if (!res.success) {
+      if (resultHost) resultHost.innerHTML = `<span class="err">❌ ${res.error}</span>`;
+      return;
+    }
+    const results = res.data || [];
+    const okCount = results.filter(r => r.success).length;
+    const errCount = results.filter(r => !r.success).length;
+
+    let html = '';
+    results.forEach(r => {
+      html += r.success
+        ? `<div class="ok">✅ ${escapeHtml(r.name)}</div>`
+        : `<div class="err">❌ ${escapeHtml(r.name)}: ${escapeHtml(r.error)}</div>`;
+    });
+
+    if (resultHost) resultHost.innerHTML = html;
+    setTimeout(() => refreshInfo(t, main, $('statusBar'), true), action === 'bulkRefresh' ? 1000 : 5000);
   });
 }

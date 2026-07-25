@@ -58,32 +58,7 @@ function setDarkMode(enabled, persist) {
   }
 }
 
-function normalizeTagList(value) {
-  const rawTags = Array.isArray(value)
-    ? value
-    : String(value || '').split(/[\s,，]+/);
-  const seen = new Set();
-  return rawTags
-    .map(tag => String(tag).trim())
-    .filter(Boolean)
-    .filter(tag => {
-      const key = tag.toLowerCase();
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-}
-
-function getAllTagsFromServers(list) {
-  const seen = new Map();
-  list.forEach(server => {
-    normalizeTagList(server.tags).forEach(tag => {
-      const key = tag.toLowerCase();
-      if (!seen.has(key)) seen.set(key, tag);
-    });
-  });
-  return Array.from(seen.values()).sort((a, b) => a.localeCompare(b));
-}
+// normalizeTagList, normalizeServers, getAllTagsFromServers → shared.js
 
 function persistServers(nextServers, currentServerId, callback) {
   allTags = getAllTagsFromServers(nextServers);
@@ -96,7 +71,7 @@ function persistServers(nextServers, currentServerId, callback) {
 
 // Apply internationalization translations
 function applyTranslations() {
-  $('i18n_title').textContent = '⚙️ SolusVM VPS · ' + t('subtitle');
+  $('i18n_title').textContent = '⚙️ VPS Dashboard · ' + t('subtitle');
   $('addBtn').textContent = t('btnAdd');
   $('i18n_labelName').textContent = t('labelName');
   $('i18n_hintName').textContent = t('hintName');
@@ -142,7 +117,17 @@ function applyTranslations() {
 
 function updatePanelHelp() {
   const panelType = $('panelType') ? $('panelType').value : 'solusvm';
-  if (panelType === 'solusvm2') {
+  if (panelType === 'lightsail' || panelType === 'ec2') {
+    $('i18n_labelUrl').textContent = t('labelUrlLightsail');
+    $('i18n_hintUrl').textContent = t('hintUrlLightsail');
+    $('i18n_labelKey').textContent = t('labelKeyLightsail');
+    $('i18n_hintKey').textContent = t('hintKeyLightsail');
+    $('i18n_labelHash').textContent = t('labelHashLightsail');
+    $('i18n_hintHash').textContent = t('hintHashLightsail');
+    $('apiUrl').placeholder = t('placeholderUrlLightsail');
+    $('apiKey').placeholder = t('placeholderKeyLightsail');
+    $('apiHash').placeholder = t('placeholderHashLightsail');
+  } else if (panelType === 'solusvm2' || panelType === 'virtfusion' || panelType === 'proxmox' || panelType === 'hetzner' || panelType === 'digitalocean') {
     $('i18n_labelUrl').textContent = t('labelUrlV2');
     $('i18n_hintUrl').textContent = t('hintUrlV2');
     $('i18n_labelKey').textContent = t('labelKeyV2');
@@ -242,6 +227,10 @@ function selectServer(id) {
     $('apiUrl').value = s.apiUrl;
     $('apiKey').value = s.apiKey;
     $('apiHash').value = s.apiHash;
+    // Reset sensitive fields to hidden when switching servers
+    $('apiKey').type = 'password';
+    $('apiHash').type = 'password';
+    document.querySelectorAll('.toggle-vis').forEach(b => b.textContent = '👁');
     // Load panel_type with fallback to 'solusvm'
     $('panelType').value = s.panel_type || 'solusvm';
     updatePanelHelp();
@@ -262,6 +251,9 @@ function showNewForm() {
   $('apiUrl').value = '';
   $('apiKey').value = '';
   $('apiHash').value = '';
+  $('apiKey').type = 'password';
+  $('apiHash').type = 'password';
+  document.querySelectorAll('.toggle-vis').forEach(b => b.textContent = '👁');
   $('panelType').value = 'solusvm';
   updatePanelHelp();
   $('serverTags').value = '';
@@ -273,17 +265,7 @@ function showNewForm() {
 }
 
 // Normalize all servers — ensure every node has panel_type (backward-compat)
-function normalizeServers(list) {
-  return (Array.isArray(list) ? list : []).map(server => ({
-    id: server.id || 'server_' + Math.random().toString(36).substr(2, 9),
-    name: server.name || 'Default Server',
-    apiUrl: (server.apiUrl || '').trim(),
-    apiKey: (server.apiKey || '').trim(),
-    apiHash: (server.apiHash || '').trim(),
-    panel_type: server.panel_type || 'solusvm',
-    tags: normalizeTagList(server.tags)
-  }));
-}
+// normalizeServers is defined in shared.js
 
 // Load configuration and migrate from legacy versions
 function loadConfig() {
@@ -374,7 +356,7 @@ function saveServer() {
   const apiHash = $('apiHash').value.trim();
   const panelType = $('panelType').value;
   
-  if (!name || !apiUrl || !apiKey || (panelType !== 'solusvm2' && !apiHash)) {
+  if (!name || !apiUrl || !apiKey || (panelType !== 'solusvm2' && panelType !== 'virtfusion' && panelType !== 'proxmox' && panelType !== 'hetzner' && panelType !== 'digitalocean' && !apiHash)) {
     showMsg(t('msgRequired'), false);
     return;
   }
@@ -469,7 +451,7 @@ function testConnection() {
   const apiHash = $('apiHash').value.trim();
   const panelType = $('panelType').value;
   
-  if (!apiUrl || !apiKey || (panelType !== 'solusvm2' && !apiHash)) {
+  if (!apiUrl || !apiKey || (panelType !== 'solusvm2' && panelType !== 'virtfusion' && panelType !== 'proxmox' && panelType !== 'hetzner' && panelType !== 'digitalocean' && !apiHash)) {
     showMsg(t('msgRequired'), false);
     return;
   }
@@ -530,7 +512,7 @@ function exportConfig() {
     }
 
     const payload = {
-      app: 'SolusVM VPS Dashboard',
+      app: 'VPS Dashboard',
       schemaVersion: CONFIG_EXPORT_VERSION,
       exportedAt: new Date().toISOString(),
       extensionVersion: chrome.runtime.getManifest().version,
@@ -656,6 +638,18 @@ $('languageSelect').addEventListener('change', e => {
     applyTheme();
     showMsg(window.t('msgSaved'), true);
   });
+});
+
+// Toggle password visibility for sensitive fields
+document.addEventListener('click', e => {
+  const btn = e.target.closest('.toggle-vis');
+  if (!btn) return;
+  const targetId = btn.dataset.target;
+  const input = document.getElementById(targetId);
+  if (!input) return;
+  const isPassword = input.type === 'password';
+  input.type = isPassword ? 'text' : 'password';
+  btn.textContent = isPassword ? '🙈' : '👁';
 });
 
 // Load configuration on startup

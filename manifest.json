@@ -1,11 +1,11 @@
 {
   "manifest_version": 3,
-  "name": "SolusVM VPS Dashboard",
-  "description": "A lightweight, 100% private sidebar monitor for SolusVM VPS. View status, reboot, and manage multiple servers in your browser.",
-  "version": "1.4.0",
+  "name": "VPS Dashboard — Multi-Panel Monitor",
+  "description": "A lightweight, private sidebar monitor for VPS. Supports SolusVM, VirtFusion, Virtualizor, Proxmox, Hetzner, DigitalOcean, AWS Lightsail & EC2.",
+  "version": "1.9.0",
   "default_locale": "en",
   "permissions": ["storage"],
-  "host_permissions": ["https://*/*", "http://*/*"],
+  "host_permissions": ["https://*.amazonaws.com/*", "https://*/*", "http://*/*"],
   "action": {
     "default_popup": "popup.html",
     "default_icon": {
