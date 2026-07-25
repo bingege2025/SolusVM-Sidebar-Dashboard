@@ -537,7 +537,9 @@ function loadFresh(currentId, cacheKey, cachedData, t, main, statusBar) {
       ...infoRes.data,
       status: infoRes.data.status,
       statusmsg: infoRes.data.statusmsg,
+      vmstat: infoRes.data.vmstat,
       vmstate: infoRes.data.vmstate,
+      state: infoRes.data.state,
       lastUpdated: new Date().toLocaleTimeString()
     };
 
@@ -563,8 +565,22 @@ function renderServerInfo(status, info, t, main) {
   main = main || $('main');
   if (!main) return;
   console.log('[DEBUG] renderServerInfo: status =', status, 'info =', info);
-  const state = String(status.statusmsg || status.vmstate || status.status || '').toLowerCase();
-  const isOnline = ['online', 'running', 'started', 'active'].includes(state);
+
+  const candidates = [
+    status.vmstat,
+    info.vmstat,
+    status.statusmsg,
+    info.statusmsg,
+    status.vmstate,
+    info.vmstate,
+    status.state,
+    info.state
+  ].filter(v => v && typeof v === 'string' && v.toLowerCase() !== 'success');
+
+  const isOnline = candidates.some(val => {
+    const v = String(val).toLowerCase();
+    return v.includes('online') || v.includes('running') || v.includes('active') || v.includes('started') || v.includes('booted') || v === 'up';
+  });
 
   main.innerHTML = `
     <div class="content">
