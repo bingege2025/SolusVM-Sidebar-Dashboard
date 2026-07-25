@@ -358,12 +358,27 @@ test('getLightsailSingle — single instance', async () => {
 console.log('\n═══ AWS EC2 API ─────────────────────────────────────');
 
 // Load EC2 functions
+eval(extractFunc('parseAWSRegion'));
+eval(extractFunc('parseEC2RegionAndInstance'));
 eval(extractFunc('signEC2Request'));
 eval(extractFunc('requireEC2Config'));
 eval(extractFunc('normalizeEC2Server'));
 eval(extractFunc('fetchEC2'));
 eval(extractFunc('getEC2Single'));
 eval(extractFunc('callEC2Action'));
+
+test('parseEC2RegionAndInstance — various inputs', () => {
+  assertEq(parseAWSRegion('ap-northeast-2'), 'ap-northeast-2');
+  assertEq(parseAWSRegion('https://ec2.ap-northeast-2.amazonaws.com'), 'ap-northeast-2');
+  
+  const res1 = parseEC2RegionAndInstance('https://ec2.ap-northeast-2.amazonaws.com/i-0123456789abcdef0');
+  assertEq(res1.region, 'ap-northeast-2');
+  assertEq(res1.targetInstanceId, 'i-0123456789abcdef0');
+
+  const res2 = parseEC2RegionAndInstance('us-west-2/i-999');
+  assertEq(res2.region, 'us-west-2');
+  assertEq(res2.targetInstanceId, 'i-999');
+});
 
 test('getEC2Single — single instance', async () => {
   const origFetch = global.fetch;
