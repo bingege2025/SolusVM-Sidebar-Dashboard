@@ -1,20 +1,33 @@
 #!/bin/bash
-# Generate simple SVG icon and convert to PNG (requires canvas or manual replacement)
-# Since there is no ImageMagick, we use SVG as placeholder
-# Chrome automatically scales SVG when installing, but manifest requires PNG
-# It is recommended to manually replace with actual PNG icons
+set -e
+# Generate the Chrome extension PNG icons from icons/icon.svg
+# This uses the sharp SVG rasterizer (librsvg-based).
+#
+# In this managed environment sharp is installed at:
+export NODE_PATH=/Users/renyb/.workbuddy/binaries/node/workspace/node_modules
+NODE=/Users/renyb/.workbuddy/binaries/node/versions/22.22.2/bin/node
 
-cd ~/projects/servermanger/icons
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR/icons"
 
-# Create simple SVG icon
-cat > icon.svg << 'EOF'
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
-  <rect width="128" height="128" rx="16" fill="#4a90d9"/>
-  <text x="64" y="80" text-anchor="middle" font-size="64" fill="white">🖥</text>
-</svg>
-EOF
+if [ ! -d "$NODE_PATH/sharp" ]; then
+  echo "sharp not found at $NODE_PATH/sharp"
+  echo "Install it with: npm install sharp"
+  exit 1
+fi
 
-echo "SVG icon created. For production, convert to PNG using:"
-echo "  npx sharp-cli -i icon.svg -o icon16.png resize 16"
-echo "  npx sharp-cli -i icon.svg -o icon48.png resize 48"  
-echo "  npx sharp-cli -i icon.svg -o icon128.png resize 128"
+"$NODE" -e '
+const sharp = require("sharp");
+const fs = require("fs");
+const path = require("path");
+const dir = process.cwd();
+const svg = fs.readFileSync(path.join(dir, "icon.svg"));
+(async () => {
+  for (const size of [16, 48, 128]) {
+    await sharp(svg, { density: 384 }).resize(size, size).png().toFile(path.join(dir, "icon" + size + ".png"));
+    console.log("icons/icon" + size + ".png");
+  }
+})().catch(e => { console.error(e); process.exit(1); });
+'
+
+echo "Icon PNGs regenerated from icon.svg"

@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "VPS Dashboard — Multi-Panel Monitor",
-  "description": "A lightweight, private sidebar monitor for VPS. Supports SolusVM, VirtFusion, Virtualizor, Proxmox, Hetzner, DigitalOcean, AWS Lightsail & EC2.",
-  "version": "1.9.0",
+  "name": "VPS Dashboard — Multi-Provider VPS Manager",
+  "description": "Manage VPS servers across SolusVM, VirtFusion, and AWS EC2 — status, resources, batch operations, and power actions.",
+  "version": "1.5.0",
   "default_locale": "en",
   "permissions": ["storage"],
   "host_permissions": ["https://*.amazonaws.com/*", "https://*/*", "http://*/*"],

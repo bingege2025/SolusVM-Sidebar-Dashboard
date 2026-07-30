@@ -1,10 +1,10 @@
 {
   "appName": {
-    "message": "SolusVM VPS Dashboard",
+    "message": "VPS Dashboard — Multi-Provider VPS Manager",
     "description": "The name of the extension"
   },
   "appDescription": {
-    "message": "A lightweight, 100% private sidebar monitor for SolusVM, VirtFusion & AWS Lightsail VPS. View status, reboot, and manage multiple servers in your browser.",
+    "message": "Manage VPS servers across SolusVM, VirtFusion, and AWS EC2 — view status, resources, and control multiple servers in your browser.",
     "description": "The description of the extension"
   }
 }

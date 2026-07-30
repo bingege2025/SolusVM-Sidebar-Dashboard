@@ -4,3 +4,5 @@ node_modules/
 dist/
 .env
 *.zip
+.workbuddy/
+vps-dashboard-v*/

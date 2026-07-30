@@ -1,10 +1,10 @@
 {
   "appName": {
-    "message": "SolusVM VPS Dashboard",
+    "message": "VPS Dashboard — Multi-Provider VPS Manager",
     "description": "Der Name der Erweiterung"
   },
   "appDescription": {
-    "message": "Ein leichtgewichtiger, 100% privater Seitenleisten-Monitor für SolusVM VPS. Status anzeigen, neu starten und mehrere Server in Ihrem Browser verwalten.",
+    "message": "Verwalten Sie VPS-Server über SolusVM, VirtFusion und AWS EC2 — Status und Ressourcen anzeigen und mehrere Server im Browser steuern.",
     "description": "Die Beschreibung der Erweiterung"
   }
 }

@@ -1,41 +1,48 @@
-# SolusVM VPS Dashboard
+# VPS Dashboard
 
-A local-only Chrome extension for managing **SolusVM-based VPS servers** from a small browser popup.
+A local-first Chrome extension for managing VPS servers across multiple providers and control panels from one browser sidebar.
 
-This is not a generic VPS monitor. It is built for users who still have budget VPS boxes on SolusVM panels and want a faster way to check provider-side status, bandwidth, and basic power actions without opening each provider panel.
+VPS Dashboard started as a small SolusVM sidepanel tool. Since v1.5.0, it has moved toward a multi-provider VPS dashboard: SolusVM, AWS EC2, and experimental VirtFusion support in one lightweight interface.
 
-[Chrome Web Store](https://chromewebstore.google.com/detail/solusvm-vps-dashboard/eopncllcllcigednkoegohhmknhibdbc?hl=en)
+[Install from Chrome Web Store](https://chromewebstore.google.com/detail/solusvm-vps-dashboard/eopncllcllcigednkoegohhmknhibdbc?hl=en) · [Changelog](./CHANGELOG.md)
+
+## Supported Providers And Panels
+
+- [x] SolusVM v1
+- [x] AWS EC2
+- [x] SolusVM v2 experimental
+- [x] VirtFusion experimental
+- [ ] AWS Lightsail
+- [ ] Virtualizor
+- [ ] Proxmox VE
+- [ ] Hetzner Cloud
+- [ ] DigitalOcean
+
+If your provider behaves differently, please open an issue with redacted API responses. Do not include API keys, tokens, IP addresses, or hostnames.
 
 ## Who This Is For
 
-- You manage one or more VPS instances that expose the SolusVM V1 Client API, SolusVM 2 REST API, or VirtFusion API.
-- Your provider uses SolusVM v1/v2 or VirtFusion panels.
-- You want quick status/resource checks from Chrome.
-- You want reboot, boot, and shutdown actions without loading the full SolusVM panel.
+- You manage VPS instances across SolusVM, VirtFusion, or AWS EC2.
+- You want quick status, bandwidth, memory, disk, and IP checks from Chrome.
+- You want reboot, boot, shutdown, or batch actions without opening each provider panel.
 - You prefer a local-only tool with no account, no backend, and no telemetry.
 
-## What It Does
+## Features
 
-- Manage multiple SolusVM VPS API profiles.
-- Select SolusVM v1, SolusVM 2, or VirtFusion per server profile.
-- View provider-side status and resource information.
-- Check bandwidth, memory, disk, IP, hostname, and node details when available from the API.
-- Run reboot, boot, and shutdown actions from the popup.
-- Search and filter servers with tags.
-- Set a default server.
-- Export and import local configuration backups.
-- Use cached data first, then refresh in the background.
-- Switch between English and Simplified Chinese.
-- Blur sensitive fields with privacy mode for screenshots or screen sharing.
+- Multi-provider server profiles.
+- Per-server panel driver selection.
+- Server status and resource overview.
+- Reboot, boot, and shutdown actions.
+- Batch refresh, reboot, and shutdown.
+- Server search and tag filters.
+- Default server selection.
+- Config import and export.
+- Cache-first loading for faster popup display.
+- Dark mode and light mode.
+- Privacy mode for screenshots or screen sharing.
+- UI languages: English, 简体中文, Deutsch, Français, Русский.
 
-## What It Does Not Do
-
-- It does not support Virtualizor, Proxmox, SSH-based monitoring, or generic VPS providers (except SolusVM v1/v2 and VirtFusion).
-- It does not install an agent inside your VPS.
-- It does not replace real monitoring systems such as Beszel, Prometheus, Uptime Kuma, or Netdata.
-- It does not collect analytics, browsing history, server credentials, or telemetry.
-
-## Privacy And Security
+## Privacy
 
 All configuration stays in your browser.
 
@@ -43,8 +50,8 @@ All configuration stays in your browser.
 - No user account.
 - No tracking or analytics.
 - No third-party proxy.
-- API URL, API Key/API Token, and API Hash/API Secret are stored locally with `chrome.storage.local`.
-- API requests are sent directly from your browser to the SolusVM endpoint you configure.
+- API credentials are stored locally with `chrome.storage.local`.
+- API requests are sent directly from your browser to the provider endpoint you configure.
 - Exported configuration files include API credentials. Keep them private.
 
 See [PRIVACY.md](./PRIVACY.md) for the full privacy policy.
@@ -63,54 +70,45 @@ https://chromewebstore.google.com/detail/solusvm-vps-dashboard/eopncllcllcigednk
 2. Enable `Developer mode`.
 3. Click `Load unpacked`.
 4. Select this project directory.
-5. Open the extension popup and click the settings button.
-6. Add your SolusVM API URL, API Key, and API Hash.
+5. Open the extension popup and click the settings icon.
+6. Add a server profile and choose the matching provider or panel type.
 
-## Getting SolusVM API Credentials
+## API Credentials
 
-1. Log in to your VPS provider's client portal or SolusVM panel.
-2. Open the target VPS.
-3. Go to the SolusVM API section.
-4. Copy the API Key and API Hash.
-5. Use the full API endpoint, for example:
+Credential requirements vary by provider.
 
-```text
-https://panel.example.com/api/client/command.php
-```
+- **SolusVM v1**: API URL, API Key, and API Hash from your provider's SolusVM panel.
+- **SolusVM v2 experimental**: API URL and API token.
+- **VirtFusion experimental**: API URL and API token.
+- **AWS EC2**: AWS Region, Access Key ID, and Secret Access Key from AWS IAM.
 
-If your provider hides or disables SolusVM Client API access, this extension cannot manage that VPS.
-
-For SolusVM 2, select `SolusVM 2 (experimental)` in settings and use an API token. A full virtual server API URL is recommended, for example:
-
-```text
-https://panel.example.com/api/v1/servers/123
-```
-
-SolusVM 2 support is experimental because providers may expose different endpoint shapes and response fields. Please open an issue with redacted API responses if your provider does not work.
+If your provider disables API access, this extension cannot manage that VPS.
 
 ## Technical Notes
 
 - Chrome Extension Manifest V3.
-- SolusVM V1 Client API.
-- Experimental SolusVM 2 REST API driver.
 - Vanilla JavaScript, HTML, and CSS.
 - No framework and no build step.
-- Background service worker handles API requests.
-- Popup uses stale-while-revalidate style local caching for faster display.
+- Background service worker handles provider API calls.
+- Multi-driver architecture for provider-specific API behavior.
+- Legacy config migration for older SolusVM-only installs.
 
-## Suggested GitHub Topics
+## Repository Topics
 
-Use these repository topics to make the project easier to find:
+Suggested GitHub topics:
 
 ```text
 chrome-extension
 manifest-v3
-solusvm
 vps
 vps-management
+vps-dashboard
 server-management
+multi-provider
+solusvm
+virtfusion
+aws-ec2
 lowendbox
 lowendtalk
-racknerd
 javascript
 ```

@@ -1,10 +1,10 @@
 {
   "appName": {
-    "message": "SolusVM VPS 管理面板",
+    "message": "VPS Dashboard — Multi-Provider VPS Manager",
     "description": "扩展名称"
   },
   "appDescription": {
-    "message": "轻量级、100% 隐私保护的 SolusVM VPS 侧边栏监控工具。在浏览器中查看状态、重启和管理多台服务器。",
+    "message": "跨 SolusVM、VirtFusion、AWS EC2 管理 VPS 服务器——在浏览器中查看状态与资源，批量管理多台服务器。",
     "description": "扩展描述"
   }
 }

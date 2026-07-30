@@ -1,72 +1,131 @@
-# Chrome Web Store Listing — SolusVM VPS Dashboard
+# Chrome Web Store Listing — VPS Dashboard
 
-> Last Updated: 2026-05-30
+> Last Updated: 2026-07-25
 
 ## Store Listing (应用商店信息)
 
 **Extension Name (扩展名称)** [REQUIRED]
-`SolusVM VPS Dashboard`
-*(必须与 manifest.json 中的 name 保持一致。最多 75 个字符。)*
+`VPS Dashboard — Multi-Provider VPS Manager`
+*(必须与 manifest.json 中的 name 保持一致。最多 45 个字符，当前 42 字符。)*
 
 **Short Description (简短说明)** [REQUIRED]
-`Manage SolusVM VPS servers - view status, reboot, boot, and shutdown.`
-*(最多 132 个字符。显示在搜索结果和卡片中。内容需具体阐述扩展程序的功能。)*
+`Manage VPS servers across SolusVM, VirtFusion, and AWS EC2 — status, resources, batch operations, and power actions.`
+*(最多 132 个字符，当前 117 字符。显示在搜索结果和卡片中。)*
 
 **Detailed Description (详细说明)** [REQUIRED]
-*(最多 16,000 个字符。注：Chrome Web Store 详情页不支持 Markdown 格式，在开发者后台粘贴时请去除 Markdown 标记，使用换行进行分段，不要使用列表符号。)*
+*(最多 16,000 个字符。注：Chrome Web Store 详情页不支持 Markdown 格式，在开发者后台粘贴时请去除 Markdown 标记，使用换行进行分段。)*
 
 ```text
-【English Description】
-A powerful, lightweight, and privacy-first Chrome sidebar extension designed for budget VPS hoarders to centralize and monitor multiple SolusVM instances.
+VPS Dashboard is a lightweight, local-only Chrome extension for managing VPS servers from multiple providers and control panels — all from your browser.
 
-Tired of opening 50 separate browser tabs just to perform a quick reboot or check your node status? The SolusVM Sidebar Dashboard solves this pain point elegantly by bringing all your VPS nodes into a single, cohesive sidebar panel.
+It is built for VPS users who have servers spread across different panels and want a faster way to check provider-side status, bandwidth, resources, and basic power actions without opening each provider panel.
 
-🚀 KEY FEATURES:
-- Multi-Server & Tag Filtering: Save and manage multiple VPS instances. Quickly filter nodes by custom tags (e.g., location, provider, or purpose) using interactive tag pills.
-- Compact Searchable Dropdown: Designed for power users with dozens of nodes. Find servers in milliseconds with built-in instant search.
-- Core Power Actions: Perform key tasks (Boot, Reboot, Shutdown) and refresh telemetry directly from the sidebar panel.
-- Privacy Shield Mode: Toggle Privacy Mode to instantly blur sensitive information like Hostnames and IP addresses—ideal for screen sharing or screenshots.
-- Cache-First Lightning Load: Shows cached metrics immediately upon opening, asynchronously pulling real-time stats in the background to bypass network latency.
-- Native Dual-Language Support: Fully localized in both English and Simplified Chinese (简体中文), dynamically matching your browser's preference.
+This is not a generic VPS monitor. It does not replace tools like Beszel, Uptime Kuma, Prometheus, or Netdata. It is a small multi-panel API dashboard for quick provider-side checks and power controls.
 
-🔒 PRIVACY & SECURITY FIRST:
-When managing infrastructure, code transparency is everything. 
-- 100% Client-Side: Runs entirely inside your local browser environment with zero external server dependencies.
-- Zero Data Collection: Your SolusVM API URL, Keys, and Hashes are never transmitted, aggregated, or shared with third parties.
-- Secured Local Storage: Saved safely inside your browser's encrypted local storage (`chrome.storage.local`).
-- Robust Self-Healing: Includes smooth legacy data migration and auto-reload on extension updates to prevent crashes or context invalidation.
+Supported Panels
 
-Perfect for administrators managing servers across multiple VPS providers (such as RackNerd and more). Fully open-source and community-driven. Get your VPS fleet under control today!
+- SolusVM v1 (stable)
+- AWS EC2 (stable)
+- SolusVM 2 (experimental)
+- VirtFusion (experimental)
 
+More panel types are on the roadmap.
 
-【中文说明】
-SolusVM VPS Dashboard 是一款专为拥有多台 VPS 的“囤鸡玩家”与系统管理员量身打造的 Chrome 浏览器扩展。支持在侧边栏或弹出窗口中集中管理和实时监控多台运行 SolusVM 面板的 VPS 节点，免去反复登录服务商后台和打开数十个浏览器标签页的烦恼。
+Key Features
 
-🚀 核心功能：
-- 多服务器与标签过滤：支持保存多台服务器配置，并可使用自定义标签（如服务商、地区或用途）进行快速过滤和归类。
-- 智能搜索下拉列表：专为拥有多节点的用户设计，支持极速模糊搜索，毫秒级定位目标服务器。
-- 便捷服务器控制：支持直接在面板中一键执行开机 (Boot)、关机 (Shutdown) 和重启 (Reboot) 指令。
-- 隐私隐藏模式：一键模糊敏感的主机名和 IP 地址，方便在演示、屏幕共享或截屏时保护您的凭证安全。
-- 缓存优先闪电加载：打开面板时瞬间渲染本地缓存的性能指标，随后在后台异步获取最新状态，彻底解决网络延迟带来的卡顿感。
-- 原生双语与暗色主题：完美支持中英文双语，可随浏览器系统语言自适应切换，并支持亮色/暗色主题。
+Multi-server management
+Add and manage multiple VPS API profiles in one place. Quickly switch between servers from the popup. Duplicate an existing server profile with one click when adding similar servers.
 
-🔒 隐私与安全承诺：
-管理服务器资产时，安全与透明高于一切。
-- 100% 纯客户端运行：所有网络请求由扩展直接发往您的 VPS 接口，无任何外部中转服务器，不经过任何第三方代理。
-- 零数据收集：我们不会收集、上传或共享您的 API 密钥、IP 地址等任何个人数据。
-- 浏览器安全存储：所有敏感凭证（API URL/Key/Hash）均安全地保存在您本地浏览器的沙盒存储中 (chrome.storage.local)。
-- 升级平滑保障：支持老版本数据自动升级迁移；版本更新时已打开的页面可自动重载，杜绝因版本冲突导致的使用中断。
+Multi-panel support
+Connect to SolusVM v1 panels, AWS EC2 instances, SolusVM 2 (experimental), and VirtFusion (experimental) — each with its own API driver.
+
+Batch operations
+Select any subset of your servers with checkboxes and run batch refresh, batch reboot, or batch shutdown. Results are reported per server.
+
+Provider-side resource view
+View status, memory, disk, bandwidth, IP address, hostname, OS/template, and other fields when available from the API.
+
+Smart power actions
+Run reboot, boot, and shutdown actions directly from the popup. Reboot and shutdown include an inline confirmation panel to reduce accidental operations. Action buttons automatically adapt to the server's current state — on AWS EC2, transitional states like "stopping" or "pending" are detected and power actions are paused until the instance settles.
+
+Tags and search
+Add tags to servers and quickly filter or search your VPS list.
+
+Default server
+Mark one server as the default so it loads first when opening the extension.
+
+Dark mode
+Switch between light and dark mode. The preference is saved locally.
+
+Privacy mode
+Blur sensitive fields such as hostname and IP address when taking screenshots or sharing your screen.
+
+Configuration import and export
+Export your local configuration as a JSON backup and import it later. This is useful when moving between browsers, machines, or local development builds.
+
+Important: exported configuration files include API credentials. Keep them private and do not share them publicly.
+
+Multilingual interface
+The extension supports:
+English
+Simplified Chinese
+German
+French
+Russian
+
+Local-only and privacy-first
+
+No backend server
+No account required
+No telemetry
+No analytics
+No third-party proxy
+No data collection
+
+Your API URL, API Key, API Hash, API Token, and configuration data are stored locally in Chrome storage. API requests are sent directly from your browser to the panel endpoint you configure.
+
+What this extension does not do
+
+It does not support Virtualizor, Proxmox, cPanel, Plesk, or generic SSH-based monitoring (Virtualizor and Proxmox are on the roadmap).
+
+It does not install an agent inside your VPS.
+
+It does not continuously monitor uptime in the background.
+
+It does not collect or upload your server data.
+
+Getting started
+
+Open the extension settings page.
+Add a server profile.
+Choose the panel type: SolusVM v1, AWS EC2, SolusVM 2 (experimental), or VirtFusion (experimental).
+Enter your API URL and credentials.
+Test the connection.
+Open the popup to view status and perform quick actions.
+
+For SolusVM v1, the API endpoint usually looks like:
+https://panel.example.com/api/client/command.php
+
+For SolusVM 2 experimental mode, a full virtual server API URL is recommended when available, for example:
+https://panel.example.com/api/v1/servers/123
+
+For AWS EC2, enter the region (optionally with an instance ID) in the API URL field, and use an IAM access key pair as credentials. The IAM user needs ec2:DescribeInstances, ec2:StartInstances, ec2:StopInstances, and ec2:RebootInstances permissions. Examples:
+us-east-1
+us-east-1/i-0123456789abcdef0
+
+Feedback
+
+If your provider returns a different API format or a panel does not work as expected, please use the built-in feedback link to open a pre-filled GitHub issue. Do not include API keys, API hashes, tokens, IP addresses, hostnames, or other sensitive information.
 ```
 
 **Category (类别)** [REQUIRED]
 `Developer Tools` (开发者工具) 或 `Productivity` (生产力工具)
 
 **Single Purpose (单一用途声明)** [REQUIRED]
-`通过 SolusVM API 提供便捷的 VPS 状态监控与基础控制操作。`
-*(用一句话描述，必须狭窄且易于理解。例如：“通过 SolusVM API 管理和监控您的 VPS 状态并执行基础控制操作。”)*
+`通过 SolusVM、VirtFusion、AWS EC2 等 VPS 控制面板 API 提供便捷的多服务器状态监控与基础电源控制操作。`
 
 **Primary Language (主语言)** [REQUIRED]
-`English` 或 `中文 (简体)` (建议设为 English，因为全球通用，或中文简体，视您主要受众而定)
+`English` (建议设为 English，全球通用)
 
 ---
 
@@ -75,11 +134,11 @@ SolusVM VPS Dashboard 是一款专为拥有多台 VPS 的“囤鸡玩家”与�
 | 资产类型 | 尺寸要求 | 状态 | 文件名/说明 |
 |-------|-----------|--------|----------|
 | Store Icon (商店图标) [REQUIRED] | 128×128 PNG | ✅ 准备就绪 | `icons/icon128.png` |
-| Screenshot 1 (屏幕截图 1) [REQUIRED] | 1280×800 或 640×400 | ⬜ 待截取 | 弹出窗口显示服务器监控状态的主界面截图 |
-| Screenshot 2 (屏幕截图 2) [RECOMMENDED] | 1280×800 或 640×400 | ⬜ 待截取 | 选项设置页面（多服务器配置管理）截图 |
+| Screenshot 1 (屏幕截图 1) [REQUIRED] | 1280×800 或 640×400 | ⬜ 待重新截取 | v1.5.0 新界面：弹出窗口主界面（含批量操作面板） |
+| Screenshot 2 (屏幕截图 2) [RECOMMENDED] | 1280×800 或 640×400 | ⬜ 待重新截取 | v1.5.0 新界面：设置页面（多服务器配置 + 复制按钮） |
 | Small Promo Tile (小宣传瓷砖) | 440×280 PNG/JPG | ⬜ 可选 | 用于应用商店推荐位 |
 
-*(注：提交时必须上传至少一张屏幕截图，截图必须是 extension 运行的实际画面，不能有设备边框，比例需严格为 1280×800 或 640×400)*
+*(注：v1.5.0 界面已全面改版，旧截图不再适用，务必重新截取。截图必须是 extension 运行的实际画面，不能有设备边框，比例需严格为 1280×800 或 640×400)*
 
 ---
 
@@ -89,8 +148,9 @@ SolusVM VPS Dashboard 是一款专为拥有多台 VPS 的“囤鸡玩家”与�
 
 | 权限名称 (Permission) | 类型 (Type) | 英文合理性说明 (Justification in English) |
 |------------|------|---------------|
-| `storage` | permissions | Used to store the server's API configurations (API URL, API Key, API Hash) and user preferences locally on the user's device. |
-| `https://*/*` | host_permissions | Required to make fetch requests directly to user-configured SolusVM panel URLs, which may reside on custom provider domains, to retrieve server statuses and send control commands (reboot/shutdown/boot). |
+| `storage` | permissions | Used to store server API configurations (API URL, API Key, API Hash/Token) and user preferences locally on the user's device. |
+| `https://*/*` and `http://*/*` | host_permissions | Required to make fetch requests directly to user-configured VPS control panel endpoints (SolusVM, SolusVM 2, VirtFusion), which may reside on custom provider domains over HTTP or HTTPS, to retrieve server statuses and send control commands (reboot/shutdown/boot). |
+| `https://*.amazonaws.com/*` | host_permissions | Required to call AWS EC2 APIs (DescribeInstances, StartInstances, StopInstances, RebootInstances) and CloudWatch metrics for user-owned EC2 instances, using the user's own IAM credentials. |
 
 ---
 
@@ -101,8 +161,6 @@ SolusVM VPS Dashboard 是一款专为拥有多台 VPS 的“囤鸡玩家”与�
 ### 1. Data Collection (数据收集)
 **Does the extension collect user data? (该扩展是否收集用户数据？)**
 `No` (不收集任何数据)
-
-*(因为本扩展所有凭证均保存在 `chrome.storage.local`，并且是直接 fetch 到 SolusVM 接口，没有收集、上传或共享任何用户数据，所以全部选择否。)*
 
 ### 2. Data Use Certification (数据使用承诺)
 *(必须勾选以下三项以符合规范)*
@@ -118,7 +176,7 @@ SolusVM VPS Dashboard 是一款专为拥有多台 VPS 的“囤鸡玩家”与�
 您的隐私政策在线地址。
 *(建议：将项目根目录下的 `PRIVACY.md` 托管到 GitHub Pages 或使用 GitHub 仓库文件的 Raw 链接。)*
 例如：
-`https://github.com/bingege2025/SolusVM-Sidebar-Dashboard/blob/main/PRIVACY.md` (或对应的 GitHub Pages 地址)
+`https://github.com/bingege2025/VPS-Sidebar-Dashboard/blob/main/PRIVACY.md` (或对应的 GitHub Pages 地址)
 
 ---
 
@@ -134,7 +192,7 @@ SolusVM VPS Dashboard 是一款专为拥有多台 VPS 的“囤鸡玩家”与�
 
 - **Publisher Name (发布者名称)**: 您的开发者名称 (例如: `Bingege` 或您的个人姓名)
 - **Contact Email (联系邮箱)**: [REQUIRED] (会公开显示在应用商店中)
-- **Support URL (支持网页/反馈地址)**: `https://github.com/bingege2025/SolusVM-Sidebar-Dashboard/issues`
+- **Support URL (支持网页/反馈地址)**: `https://github.com/bingege2025/VPS-Sidebar-Dashboard/issues`
 
 ---
 
@@ -142,7 +200,7 @@ SolusVM VPS Dashboard 是一款专为拥有多台 VPS 的“囤鸡玩家”与�
 
 | 版本号 | 发布日期 | 变更说明 | 状态 |
 |---------|------|---------|--------|
-| 1.5.0 | 2026-07-20 | 新增 VirtFusion 面板支持（REST API + Bearer Token 认证）。 | 已发布 |
+| 1.5.0 | 2026-07-25 | 新增 AWS EC2 与 VirtFusion（实验）面板；批量刷新/重启/关机（可选择目标服务器）；复制服务器配置；开机/关机按钮随服务器状态智能切换（含 EC2 过渡状态识别）；操作后静默刷新；界面全面改版。 | 待发布 |
 | 1.4.0 | 2026-07-15 | 新增 SolusVM 2 面板支持。 | 已发布 |
 | 1.3.0 | 2026-07-01 | 多语言支持（德语、法语、俄语）。 | 已发布 |
 | 1.0.0 | 2026-05-30 | 首个正式发布版本。支持多服务器配置、状态展示、开机/关机/重启操作。 | 已发布 |

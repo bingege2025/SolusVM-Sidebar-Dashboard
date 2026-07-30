@@ -40,7 +40,7 @@ function hideMsg() {
 function updateThemeToggle() {
   const btn = $('themeToggle');
   if (!btn) return;
-  btn.textContent = darkModeEnabled ? '☀' : '☾';
+  btn.innerHTML = lucideIcon(darkModeEnabled ? 'sun' : 'moon', 15);
   btn.title = darkModeEnabled ? t('lightMode') : t('darkMode');
   btn.setAttribute('aria-label', btn.title);
 }
@@ -71,8 +71,8 @@ function persistServers(nextServers, currentServerId, callback) {
 
 // Apply internationalization translations
 function applyTranslations() {
-  $('i18n_title').textContent = '⚙️ VPS Dashboard · ' + t('subtitle');
-  $('addBtn').textContent = t('btnAdd');
+  $('i18n_title').innerHTML = lucideIcon('settings', 20) + '<span>VPS Dashboard · ' + t('subtitle') + '</span>';
+  $('addBtn').innerHTML = lucideIcon('plus', 14) + t('btnAdd');
   $('i18n_labelName').textContent = t('labelName');
   $('i18n_hintName').textContent = t('hintName');
   $('i18n_labelPanelType').textContent = t('labelPanelType');
@@ -167,20 +167,22 @@ function renderServerList() {
     
     const isActive = s.id === editingServerId;
     const isDefault = s.id === defaultServerId;
-    const panelLabel = (s.panel_type || 'solusvm').toUpperCase();
-    
+    const providerMeta = getProviderMeta(s.panel_type);
+
     return `
       <div class="server-item ${isActive ? 'active' : ''}" data-id="${s.id}">
+        <img class="server-logo" src="${providerMeta.logo}" alt="" title="${escapeHtml(providerMeta.name)}">
         <div class="server-info">
           <div class="server-title-container">
             <span class="server-name">${escapeHtml(s.name)}</span>
             ${isDefault ? `<span class="badge-default">${t('badgeDefault')}</span>` : ''}
           </div>
-          <span class="server-host">${escapeHtml(host)} · ${escapeHtml(panelLabel)}</span>
+          <span class="server-host">${escapeHtml(host)} · ${escapeHtml(providerMeta.name)}</span>
         </div>
         <div class="server-actions">
-          <button class="btn-icon star ${isDefault ? 'active' : ''}" data-id="${s.id}" title="${t('tagDefault')}">${isDefault ? '★' : '☆'}</button>
-          <button class="btn-icon del" data-id="${s.id}" title="${t('deleteTitle')}">🗑️</button>
+          <button class="btn-icon copy" data-id="${s.id}" title="${t('copyTitle')}">${lucideIcon('copy', 14)}</button>
+          <button class="btn-icon star ${isDefault ? 'active' : ''}" data-id="${s.id}" title="${t('tagDefault')}">${lucideIcon('star', 14, isDefault)}</button>
+          <button class="btn-icon del" data-id="${s.id}" title="${t('deleteTitle')}">${lucideIcon('trash', 14)}</button>
         </div>
       </div>
     `;
@@ -189,7 +191,7 @@ function renderServerList() {
   // Bind select event
   document.querySelectorAll('.server-item').forEach(el => {
     el.addEventListener('click', e => {
-      if (e.target.classList.contains('del') || e.target.classList.contains('star')) return;
+      if (e.target.classList.contains('del') || e.target.classList.contains('star') || e.target.classList.contains('copy')) return;
       selectServer(el.dataset.id);
     });
   });
@@ -215,6 +217,14 @@ function renderServerList() {
       });
     });
   });
+
+  // Bind copy event
+  document.querySelectorAll('.btn-icon.copy').forEach(el => {
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      copyServer(el.dataset.id);
+    });
+  });
 }
 
 // Select server for editing
@@ -230,7 +240,7 @@ function selectServer(id) {
     // Reset sensitive fields to hidden when switching servers
     $('apiKey').type = 'password';
     $('apiHash').type = 'password';
-    document.querySelectorAll('.toggle-vis').forEach(b => b.textContent = '👁');
+    document.querySelectorAll('.toggle-vis').forEach(b => b.innerHTML = lucideIcon('eye', 15));
     // Load panel_type with fallback to 'solusvm'
     $('panelType').value = s.panel_type || 'solusvm';
     updatePanelHelp();
@@ -253,7 +263,7 @@ function showNewForm() {
   $('apiHash').value = '';
   $('apiKey').type = 'password';
   $('apiHash').type = 'password';
-  document.querySelectorAll('.toggle-vis').forEach(b => b.textContent = '👁');
+  document.querySelectorAll('.toggle-vis').forEach(b => b.innerHTML = lucideIcon('eye', 15));
   $('panelType').value = 'solusvm';
   updatePanelHelp();
   $('serverTags').value = '';
@@ -444,6 +454,37 @@ function deleteServer(id) {
   }
 }
 
+// Copy (duplicate) server config
+function copyServer(id) {
+  const s = servers.find(item => item.id === id);
+  if (!s) return;
+
+  const newId = 'server_' + Date.now();
+  const newServer = {
+    ...s,
+    id: newId,
+    name: s.name + t('copiedSuffix')
+  };
+
+  servers.push(newServer);
+
+  try {
+    chrome.storage.local.get('currentServerId', data => {
+      if (chrome.runtime.lastError) console.error(chrome.runtime.lastError);
+      data = data || {};
+      let currentId = data.currentServerId;
+      persistServers(servers, currentId, () => {
+        renderServerList();
+        editingServerId = newId;
+        selectServer(newId);
+        showMsg(t('msgCopied', { name: newServer.name }), true);
+      });
+    });
+  } catch (e) {
+    console.error('copyServer error:', e);
+  }
+}
+
 // Test API connection
 function testConnection() {
   const apiUrl = $('apiUrl').value.trim();
@@ -491,7 +532,7 @@ function testConnection() {
 
 function getExportFileName() {
   const date = new Date().toISOString().slice(0, 10);
-  return `solusvm-vps-dashboard-config-${date}.json`;
+  return `vps-dashboard-config-${date}.json`;
 }
 
 function exportConfig() {
@@ -649,7 +690,7 @@ document.addEventListener('click', e => {
   if (!input) return;
   const isPassword = input.type === 'password';
   input.type = isPassword ? 'text' : 'password';
-  btn.textContent = isPassword ? '🙈' : '👁';
+  btn.innerHTML = lucideIcon(isPassword ? 'eyeOff' : 'eye', 15);
 });
 
 // Load configuration on startup
