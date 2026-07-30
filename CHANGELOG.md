@@ -18,7 +18,7 @@ All notable changes to VPS Dashboard are documented here.
 ### Changed
 
 - Renamed product to "VPS Dashboard — Multi-Provider VPS Manager" (from a SolusVM-focused sidepanel).
-- Panel type selector now surfaces SolusVM v1, SolusVM v2 (experimental), VirtFusion (experimental), and AWS EC2; other provider drivers are retained but hidden from the selector for now.
+- Panel type selector now supports SolusVM v1, SolusVM v2 (experimental), VirtFusion (experimental), and AWS EC2.
 - Improved config page spacing and layout.
 - Improved popup UI for multi-server and multi-provider usage.
 - Power buttons now adapt to server state where supported.
