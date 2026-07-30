@@ -1,5 +1,7 @@
 # VPS Dashboard
 
+> **Build tools for VPS users.** VPS Dashboard is one of them.
+
 A local-first Chrome extension for managing VPS servers across multiple providers and control panels from one browser sidebar.
 
 VPS Dashboard started as a small SolusVM sidepanel tool. Since v1.5.0, it has moved toward a multi-provider VPS dashboard: SolusVM, AWS EC2, and experimental VirtFusion support in one lightweight interface.

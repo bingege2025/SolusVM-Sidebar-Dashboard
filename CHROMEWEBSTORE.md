@@ -1,6 +1,6 @@
 # Chrome Web Store Listing — VPS Dashboard
 
-> Last Updated: 2026-07-25
+> Last Updated: 2026-07-30
 
 ## Store Listing (应用商店信息)
 
@@ -16,6 +16,8 @@
 *(最多 16,000 个字符。注：Chrome Web Store 详情页不支持 Markdown 格式，在开发者后台粘贴时请去除 Markdown 标记，使用换行进行分段。)*
 
 ```text
+Build tools for VPS users.
+
 VPS Dashboard is a lightweight, local-only Chrome extension for managing VPS servers from multiple providers and control panels — all from your browser.
 
 It is built for VPS users who have servers spread across different panels and want a faster way to check provider-side status, bandwidth, resources, and basic power actions without opening each provider panel.
