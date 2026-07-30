@@ -2,29 +2,39 @@
 
 All notable changes to VPS Dashboard are documented here.
 
-## 1.5.0 - 2026-07-25
+## 1.5.0 - 2026-07-30
 
 ### Added
 
 - Multi-provider dashboard positioning.
-- AWS EC2 support.
+- AWS EC2 support: instance status and power control, EBS disk size (via DescribeVolumes), and monthly network traffic (via CloudWatch NetworkIn/Out).
 - Experimental VirtFusion support.
 - Batch refresh, reboot, and shutdown actions.
 - Server selection for batch operations.
 - Server config copy action.
+- New extension icon.
 - Chrome Web Store marketing screenshots.
 
 ### Changed
 
-- Renamed product positioning from a SolusVM-focused sidepanel to VPS Dashboard.
+- Renamed product to "VPS Dashboard — Multi-Provider VPS Manager" (from a SolusVM-focused sidepanel).
+- Panel type selector now surfaces SolusVM v1, SolusVM v2 (experimental), VirtFusion (experimental), and AWS EC2; other provider drivers are retained but hidden from the selector for now.
 - Improved config page spacing and layout.
 - Improved popup UI for multi-server and multi-provider usage.
 - Power buttons now adapt to server state where supported.
 - Actions refresh status after completion.
 
+### Fixed
+
+- EC2 reboot/shutdown reliability — reuse the existing Instance ID to avoid concurrent-fetch timeouts.
+- SolusVM v1 no longer misreads an API-layer success response as a shutdown.
+- Corrected memory/disk/bandwidth unit scaling across providers (EC2, Hetzner, Lightsail, Virtualizor).
+- More tolerant AWS region/endpoint parsing (handles pasted URLs/domains).
+
 ### Notes
 
-- AWS EC2 and VirtFusion support are new and may have provider-specific edge cases.
+- AWS EC2 requires IAM permissions `ec2:DescribeVolumes` and `cloudwatch:GetMetricStatistics` to show disk and traffic.
+- SolusVM v2 and VirtFusion support are experimental and may have provider-specific edge cases.
 - SolusVM v1 remains supported for existing users.
 
 ## 1.4.0 - 2026-07-18
