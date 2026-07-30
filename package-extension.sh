@@ -1,39 +1,31 @@
 #!/bin/bash
-# package-extension.sh — 用于打包 Chrome 扩展程序，排除开发和无关文件
+# package-extension.sh — 打包 Chrome 扩展，仅包含运行所需文件
+set -e
 
-EXTENSION_NAME="solusvm-vps-dashboard"
-VERSION=$(node -p "require('./manifest.json').version")
+cd "$(dirname "$0")"
+
+EXTENSION_NAME="vps-dashboard"
+VERSION=$(grep -o '"version"\s*:\s*"[^"]*"' manifest.json | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
 OUTPUT="${EXTENSION_NAME}-v${VERSION}.zip"
 
-# 清理旧的压缩包
 rm -f "$OUTPUT"
 
-echo "正在打包扩展程序 $EXTENSION_NAME v$VERSION..."
+echo "Packaging ${EXTENSION_NAME} v${VERSION}..."
 
-# 打包文件，排除 Git、Node、脚本和文档等开发文件
-# 注意：_locales 目录包含 Chrome 原生国际化文件，需打入包中
-zip -r "$OUTPUT" . \
-  -x ".git/*" \
-  -x "__MACOSX/*" \
-  -x "servermanger/*" \
-  -x "node_modules/*" \
-  -x ".env" \
-  -x "*.map" \
-  -x "CHROMEWEBSTORE.md" \
-  -x "PRIVACY.md" \
-  -x ".DS_Store" \
-  -x "Thumbs.db" \
-  -x "*.sh" \
-  -x "*.zip" \
-  -x ".gitignore" \
-  -x ".agents/*" \
-  -x "tests/*" \
-  -x "test-*.js" \
-  -x "shared.js"
+# 只显式包含运行所需文件；icons/icon.svg 是图标源文件，不打包
+zip -r "$OUTPUT" \
+  manifest.json \
+  background.js \
+  i18n.js \
+  shared.js \
+  popup.html popup.js \
+  options.html options.js \
+  icons \
+  logos \
+  _locales \
+  -x "icons/icon.svg" \
+  -x "*.DS_Store" \
+  -x "__MACOSX/*"
 
-if [ -f "$OUTPUT" ]; then
-  echo "✅ 打包成功: $OUTPUT ($(du -h "$OUTPUT" | cut -f1))"
-  echo "提示: 您可以直接上传此 ZIP 文件至 Chrome 开发者后台。"
-else
-  echo "❌ 打包失败，请检查 zip 命令是否可用。"
-fi
+echo "✅ Done: $OUTPUT ($(du -h "$OUTPUT" | cut -f1))"
+echo "Upload this ZIP to the Chrome Developer Dashboard."

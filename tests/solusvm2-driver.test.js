@@ -16,7 +16,20 @@ function loadBackground(fetchImpl) {
   const context = {
     console,
     URLSearchParams,
+    TextEncoder,
+    crypto: globalThis.crypto,
+    setTimeout,
+    clearTimeout,
+    AbortController,
+    Date,
     fetch: fetchImpl,
+    // Service-worker importScripts shim: load the referenced file into the same context
+    importScripts(...files) {
+      for (const f of files) {
+        const p = path.join(__dirname, '..', f);
+        vm.runInContext(fs.readFileSync(p, 'utf8'), context, { filename: p });
+      }
+    },
     chrome: {
       runtime: {
         onMessage: {

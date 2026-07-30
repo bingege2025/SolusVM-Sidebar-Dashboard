@@ -109,8 +109,6 @@ async function callSolusVM1(command, extraParams = {}, configOverride) {
     params.append(key, value);
   }
 
-  console.log(`[DEBUG] fetch ${command} → ${url}`);
-
   const response = await fetch(url, {
     method: 'POST',
     headers: {
@@ -125,11 +123,9 @@ async function callSolusVM1(command, extraParams = {}, configOverride) {
   if (!response.ok) {
     throw new Error(`API request failed: ${response.status}`);
   }
-  
+
   const text = await response.text();
-  console.log(`[DEBUG] Raw response for action ${command}:`, text);
   const result = parseApiResponse(text);
-  console.log(`[DEBUG] Parsed result for action ${command}:`, result);
   if (result.status && result.status !== 'success') {
     throw new Error(result.statusmsg || 'Operation failed');
   }
@@ -542,9 +538,10 @@ function normalizeVirtualizorServer(raw) {
     ip: (raw.ips || '').split(',')[0].trim(),
     os: raw.os_name || raw.os_distro,
     template: raw.os_name || raw.os_distro,
-    mem: bytesResource(undefined, Number(raw.ram || 0)),
-    hdd: bytesResource(undefined, Number(raw.disk_space || 0) * 1024),
-    bw: bytesResource(Number(raw.bandwidth_used || 0) * 1024, Number(raw.bandwidth || 0) * 1024)
+    // Virtualizor units: ram = MB, disk_space = GB, bandwidth(b_used) = GB
+    mem: bytesResource(undefined, Number(raw.ram || 0) * 1024 * 1024),
+    hdd: bytesResource(undefined, Number(raw.disk_space || 0) * 1024 * 1024 * 1024),
+    bw: bytesResource(Number(raw.bandwidth_used || 0) * 1024 * 1024 * 1024, Number(raw.bandwidth || 0) * 1024 * 1024 * 1024)
   };
 }
 
@@ -786,6 +783,8 @@ function normalizeHetznerServer(raw) {
   const image = raw.image || {};
   const memory = serverType.memory || 0; // GB
   const disk = serverType.disk || 0; // GB
+  // Hetzner server detail exposes month-to-date traffic in bytes
+  const trafficBytes = (raw.outgoing_traffic || 0) + (raw.ingoing_traffic || 0);
 
   return {
     id: String(raw.id),
@@ -797,9 +796,11 @@ function normalizeHetznerServer(raw) {
     ip: ipv4.ip || '',
     os: image.name || image.os_flavor || '',
     template: image.name || '',
-    mem: bytesResource(undefined, memory * 1024),
-    hdd: bytesResource(undefined, disk * 1024),
-    bw: bytesResource(undefined, 0)
+    // All values in bytes — popup formatSize() expects bytes
+    mem: bytesResource(undefined, memory * 1024 * 1024 * 1024),
+    hdd: bytesResource(undefined, disk * 1024 * 1024 * 1024),
+    // Hetzner has no bandwidth quota; show month-to-date traffic as a single value
+    bw: bytesResource(undefined, trafficBytes)
   };
 }
 
@@ -1041,6 +1042,9 @@ function normalizeLightsailServer(raw) {
   const hardware = raw.hardware || {};
   const disks = hardware.disks || [];
   const diskSizeGb = disks.length > 0 ? (disks[0].sizeInGb || 0) : 0;
+  // Lightsail monthly transfer quota (GB) from networking.monthlyTransfer
+  const networking = raw.networking || {};
+  const bwQuotaGb = (networking.monthlyTransfer && networking.monthlyTransfer.gbAllowed) || 0;
 
   return {
     id: raw.name || raw.arn,
@@ -1052,9 +1056,11 @@ function normalizeLightsailServer(raw) {
     ip: raw.publicIpAddress,
     os: raw.blueprintName,
     template: raw.blueprintName,
-    mem: bytesResource(undefined, (hardware.ramSizeInGb || 0) * 1024),
-    hdd: bytesResource(undefined, diskSizeGb * 1024),
-    bw: bytesResource(undefined, 0)
+    // All values in bytes — popup formatSize() expects bytes
+    mem: bytesResource(undefined, (hardware.ramSizeInGb || 0) * 1024 * 1024 * 1024),
+    hdd: bytesResource(undefined, diskSizeGb * 1024 * 1024 * 1024),
+    // Lightsail bandwidth quota (GB) — usage not provided by GetInstance, so shown as a single value
+    bw: bytesResource(undefined, bwQuotaGb * 1024 * 1024 * 1024)
   };
 }
 
@@ -1152,12 +1158,11 @@ async function callLightsailAction(action, configOverride) {
 // ─── AWS EC2 API ──────────────────────────────────────────────
 // EC2 uses query-based API with SigV4 over POST
 
-async function signEC2Request(accessKeyId, secretAccessKey, region, params) {
-  const service = 'ec2';
-  const host = `ec2.${region}.amazonaws.com`;
+// Generic AWS query-API signer (used by EC2 & CloudWatch). params must include Version.
+async function signAWSQueryRequest(accessKeyId, secretAccessKey, region, service, host, params) {
   const contentType = 'application/x-www-form-urlencoded';
 
-  const bodyParams = new URLSearchParams({ Version: '2016-11-15', ...params });
+  const bodyParams = new URLSearchParams(params);
   bodyParams.sort();
   const body = bodyParams.toString();
 
@@ -1189,6 +1194,22 @@ async function signEC2Request(accessKeyId, secretAccessKey, region, params) {
     },
     body
   };
+}
+
+async function signEC2Request(accessKeyId, secretAccessKey, region, params) {
+  return signAWSQueryRequest(
+    accessKeyId, secretAccessKey, region,
+    'ec2', `ec2.${region}.amazonaws.com`,
+    { Version: '2016-11-15', ...params }
+  );
+}
+
+async function signCloudWatchRequest(accessKeyId, secretAccessKey, region, params) {
+  return signAWSQueryRequest(
+    accessKeyId, secretAccessKey, region,
+    'monitoring', `monitoring.${region}.amazonaws.com`,
+    { Version: '2010-08-01', ...params }
+  );
 }
 
 async function fetchEC2WithTimeout(url, options = {}, timeoutMs = 10000) {
@@ -1226,6 +1247,126 @@ function requireEC2Config(config) {
   }
 }
 
+// Throw a readable error when an AWS query API returns a non-2xx XML error document
+function throwAWSXmlError(prefix, status, text) {
+  const codeMatch = text.match(/<Code>([^<]+)<\/Code>/);
+  const msgMatch = text.match(/<Message>([^<]+)<\/Message>/);
+  const code = codeMatch ? codeMatch[1] : `HTTP ${status}`;
+  const msg = msgMatch ? msgMatch[1] : text.substring(0, 200);
+  throw new Error(`${prefix}: ${code} — ${msg}`);
+}
+
+// Low-level EC2 query call — returns the raw XML response text
+async function ec2ApiRaw(region, accessKeyId, secretAccessKey, params) {
+  const req = await signEC2Request(accessKeyId, secretAccessKey, region, params);
+  const response = await fetchEC2WithTimeout(req.endpoint, {
+    method: 'POST',
+    headers: req.headers,
+    body: req.body
+  }, 10000);
+  const text = await response.text();
+  if (!response.ok) throwAWSXmlError('AWS EC2 error', response.status, text);
+  return text;
+}
+
+// Low-level CloudWatch query call — returns the raw XML response text
+async function cloudWatchApiRaw(region, accessKeyId, secretAccessKey, params) {
+  const req = await signCloudWatchRequest(accessKeyId, secretAccessKey, region, params);
+  const response = await fetchEC2WithTimeout(req.endpoint, {
+    method: 'POST',
+    headers: req.headers,
+    body: req.body
+  }, 10000);
+  const text = await response.text();
+  if (!response.ok) throwAWSXmlError('AWS CloudWatch error', response.status, text);
+  return text;
+}
+
+// Total size (GiB) of all EBS volumes attached to the instance
+async function getEC2VolumeSizeGiB(region, accessKeyId, secretAccessKey, instanceId) {
+  const text = await ec2ApiRaw(region, accessKeyId, secretAccessKey, {
+    Action: 'DescribeVolumes',
+    'Filter.1.Name': 'attachment.instance-id',
+    'Filter.1.Value.1': instanceId
+  });
+  let totalGiB = 0;
+  const sizeRegex = /<size>(\d+)<\/size>/g;
+  let m;
+  while ((m = sizeRegex.exec(text)) !== null) {
+    totalGiB += parseInt(m[1], 10);
+  }
+  return totalGiB;
+}
+
+// Month-to-date network traffic (NetworkIn + NetworkOut) in bytes via CloudWatch
+async function getEC2MonthlyTrafficBytes(region, accessKeyId, secretAccessKey, instanceId) {
+  const now = new Date();
+  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  const baseParams = {
+    Action: 'GetMetricStatistics',
+    Namespace: 'AWS/EC2',
+    'Dimensions.member.1.Name': 'InstanceId',
+    'Dimensions.member.1.Value': instanceId,
+    StartTime: monthStart.toISOString(),
+    EndTime: now.toISOString(),
+    Period: '86400',
+    'Statistics.member.1': 'Sum'
+  };
+
+  const sumMetric = async (metricName) => {
+    const text = await cloudWatchApiRaw(region, accessKeyId, secretAccessKey, {
+      ...baseParams,
+      MetricName: metricName
+    });
+    let total = 0;
+    const sumRegex = /<Sum>([\d.eE+-]+)<\/Sum>/g;
+    let m;
+    while ((m = sumRegex.exec(text)) !== null) {
+      total += parseFloat(m[1]) || 0;
+    }
+    return total;
+  };
+
+  const [inBytes, outBytes] = await Promise.all([
+    sumMetric('NetworkIn'),
+    sumMetric('NetworkOut')
+  ]);
+  return inBytes + outBytes;
+}
+
+// EC2 instance type → memory in MB (common types)
+const EC2_INSTANCE_MEMORY_MB = {
+  't2.nano': 512, 't2.micro': 1024, 't2.small': 2048, 't2.medium': 4096, 't2.large': 8192, 't2.xlarge': 16384, 't2.2xlarge': 32768,
+  't3.nano': 512, 't3.micro': 1024, 't3.small': 2048, 't3.medium': 4096, 't3.large': 8192, 't3.xlarge': 16384, 't3.2xlarge': 32768,
+  't3a.nano': 512, 't3a.micro': 1024, 't3a.small': 2048, 't3a.medium': 4096, 't3a.large': 8192, 't3a.xlarge': 16384, 't3a.2xlarge': 32768,
+  't4g.nano': 512, 't4g.micro': 1024, 't4g.small': 2048, 't4g.medium': 4096, 't4g.large': 8192, 't4g.xlarge': 16384, 't4g.2xlarge': 32768,
+  'm5.large': 8192, 'm5.xlarge': 16384, 'm5.2xlarge': 32768, 'm5.4xlarge': 65536, 'm5.8xlarge': 131072, 'm5.12xlarge': 196608, 'm5.16xlarge': 262144, 'm5.24xlarge': 393216,
+  'm5a.large': 8192, 'm5a.xlarge': 16384, 'm5a.2xlarge': 32768, 'm5a.4xlarge': 65536, 'm5a.8xlarge': 131072, 'm5a.12xlarge': 196608, 'm5a.16xlarge': 262144, 'm5a.24xlarge': 393216,
+  'm6g.medium': 4096, 'm6g.large': 8192, 'm6g.xlarge': 16384, 'm6g.2xlarge': 32768, 'm6g.4xlarge': 65536, 'm6g.8xlarge': 131072, 'm6g.12xlarge': 196608, 'm6g.16xlarge': 262144,
+  'm6i.large': 8192, 'm6i.xlarge': 16384, 'm6i.2xlarge': 32768, 'm6i.4xlarge': 65536, 'm6i.8xlarge': 131072, 'm6i.12xlarge': 196608, 'm6i.16xlarge': 262144, 'm6i.24xlarge': 393216, 'm6i.32xlarge': 524288,
+  'c5.large': 4096, 'c5.xlarge': 8192, 'c5.2xlarge': 16384, 'c5.4xlarge': 32768, 'c5.9xlarge': 73728, 'c5.12xlarge': 98304, 'c5.18xlarge': 147456, 'c5.24xlarge': 196608,
+  'c5a.large': 4096, 'c5a.xlarge': 8192, 'c5a.2xlarge': 16384, 'c5a.4xlarge': 32768, 'c5a.8xlarge': 65536, 'c5a.12xlarge': 98304, 'c5a.16xlarge': 131072, 'c5a.24xlarge': 196608,
+  'c6g.medium': 2048, 'c6g.large': 4096, 'c6g.xlarge': 8192, 'c6g.2xlarge': 16384, 'c6g.4xlarge': 32768, 'c6g.8xlarge': 65536, 'c6g.12xlarge': 98304, 'c6g.16xlarge': 131072,
+  'c6i.large': 4096, 'c6i.xlarge': 8192, 'c6i.2xlarge': 16384, 'c6i.4xlarge': 32768, 'c6i.8xlarge': 65536, 'c6i.12xlarge': 98304, 'c6i.16xlarge': 131072, 'c6i.24xlarge': 196608, 'c6i.32xlarge': 262144,
+  'r5.large': 16384, 'r5.xlarge': 32768, 'r5.2xlarge': 65536, 'r5.4xlarge': 131072, 'r5.8xlarge': 262144, 'r5.12xlarge': 393216, 'r5.16xlarge': 524288, 'r5.24xlarge': 786432,
+  'r5a.large': 16384, 'r5a.xlarge': 32768, 'r5a.2xlarge': 65536, 'r5a.4xlarge': 131072, 'r5a.8xlarge': 262144, 'r5a.12xlarge': 393216, 'r5a.16xlarge': 524288, 'r5a.24xlarge': 786432,
+  'r6g.medium': 8192, 'r6g.large': 16384, 'r6g.xlarge': 32768, 'r6g.2xlarge': 65536, 'r6g.4xlarge': 131072, 'r6g.8xlarge': 262144, 'r6g.12xlarge': 393216, 'r6g.16xlarge': 524288,
+  'r6i.large': 16384, 'r6i.xlarge': 32768, 'r6i.2xlarge': 65536, 'r6i.4xlarge': 131072, 'r6i.8xlarge': 262144, 'r6i.12xlarge': 393216, 'r6i.16xlarge': 524288, 'r6i.24xlarge': 786432, 'r6i.32xlarge': 1048576,
+  'c7g.medium': 2048, 'c7g.large': 4096, 'c7g.xlarge': 8192, 'c7g.2xlarge': 16384, 'c7g.4xlarge': 32768, 'c7g.8xlarge': 65536, 'c7g.12xlarge': 98304, 'c7g.16xlarge': 131072,
+  'm7g.medium': 4096, 'm7g.large': 8192, 'm7g.xlarge': 16384, 'm7g.2xlarge': 32768, 'm7g.4xlarge': 65536, 'm7g.8xlarge': 131072, 'm7g.12xlarge': 196608, 'm7g.16xlarge': 262144,
+  'r7g.medium': 8192, 'r7g.large': 16384, 'r7g.xlarge': 32768, 'r7g.2xlarge': 65536, 'r7g.4xlarge': 131072, 'r7g.8xlarge': 262144, 'r7g.12xlarge': 393216, 'r7g.16xlarge': 524288,
+  'm7i.large': 8192, 'm7i.xlarge': 16384, 'm7i.2xlarge': 32768, 'm7i.4xlarge': 65536, 'm7i.8xlarge': 131072, 'm7i.12xlarge': 196608, 'm7i.16xlarge': 262144, 'm7i.24xlarge': 393216, 'm7i.48xlarge': 786432,
+  'c7i.large': 4096, 'c7i.xlarge': 8192, 'c7i.2xlarge': 16384, 'c7i.4xlarge': 32768, 'c7i.8xlarge': 65536, 'c7i.12xlarge': 98304, 'c7i.16xlarge': 131072, 'c7i.24xlarge': 196608, 'c7i.48xlarge': 393216,
+  'r7i.large': 16384, 'r7i.xlarge': 32768, 'r7i.2xlarge': 65536, 'r7i.4xlarge': 131072, 'r7i.8xlarge': 262144, 'r7i.12xlarge': 393216, 'r7i.16xlarge': 524288, 'r7i.24xlarge': 786432, 'r7i.48xlarge': 1572864,
+};
+
+function getEC2MemoryMB(instanceType) {
+  if (!instanceType) return 0;
+  return EC2_INSTANCE_MEMORY_MB[instanceType] || 0;
+}
+
+// Parse EBS volume total size from DescribeVolumes XML response
+
 function normalizeEC2Server(raw) {
   const state = (raw.State && raw.State.Name) || 'unknown';
   const statusMap = {
@@ -1244,6 +1385,10 @@ function normalizeEC2Server(raw) {
   const hostname = nameTag ? nameTag.Value : raw.InstanceId;
 
   const instanceType = raw.InstanceType || '';
+  const volumeCount = raw.VolumeCount || 0;
+  const memMB = getEC2MemoryMB(instanceType);
+  const diskGiB = raw.DiskGiB || 0;
+  const trafficBytes = raw.TrafficBytes || 0;
 
   return {
     id: raw.InstanceId,
@@ -1253,11 +1398,13 @@ function normalizeEC2Server(raw) {
     vmstate: state,
     ipaddress: raw.PublicIpAddress || '',
     ip: raw.PublicIpAddress || '',
-    os: instanceType,
-    template: instanceType,
-    mem: bytesResource(undefined, 0),
-    hdd: bytesResource(undefined, 0),
-    bw: bytesResource(undefined, 0)
+    os: instanceType + (volumeCount > 0 ? ` · ${volumeCount} vol` : ''),
+    template: instanceType + (volumeCount > 0 ? ` · ${volumeCount} vol` : ''),
+    // All values in bytes — popup formatSize() expects bytes
+    mem: bytesResource(undefined, memMB * 1024 * 1024),
+    hdd: bytesResource(undefined, diskGiB * 1024 * 1024 * 1024),
+    // EC2 has no bandwidth quota; show month-to-date traffic as a single value
+    bw: bytesResource(undefined, trafficBytes)
   };
 }
 
@@ -1265,14 +1412,13 @@ function normalizeEC2Server(raw) {
 const _ec2Inflight = new Map();
 
 async function fetchEC2(region, accessKeyId, secretAccessKey, params) {
-  const cacheKey = `${region}|${params.Action || ''}|${params.InstanceId || ''}`;
+  const instanceIdParam = params.InstanceId || params['InstanceId.1'] || '';
+  const cacheKey = `${region}|${params.Action || ''}|${instanceIdParam}`;
   if (_ec2Inflight.has(cacheKey)) {
-    console.log('[EC2] dedup — reusing in-flight request:', cacheKey);
     return await _ec2Inflight.get(cacheKey);
   }
 
   const promise = (async () => {
-    console.log('[EC2] fetchEC2 starting for', params.Action, 'region:', region);
     const postRequest = await signEC2Request(accessKeyId, secretAccessKey, region, params);
 
     let response;
@@ -1304,10 +1450,27 @@ async function fetchEC2(region, accessKeyId, secretAccessKey, params) {
     let instSetMatch;
     while ((instSetMatch = instSetRegex.exec(text)) !== null) {
       const instSetXml = instSetMatch[1];
-      const itemRegex = /<item>([\s\S]*?)<\/item>/g;
-      let itemMatch;
-      while ((itemMatch = itemRegex.exec(instSetXml)) !== null) {
-        const instXml = itemMatch[1];
+      // Extract instance <item> blocks with nesting awareness
+      // EC2 XML nests <item> inside groupSet/tagSet/blockDeviceMapping
+      const instancesXml = [];
+      let searchFrom = 0;
+      while (true) {
+        const openIdx = instSetXml.indexOf('<item>', searchFrom);
+        if (openIdx === -1) break;
+        // Count nesting depth to find matching </item>
+        let depth = 1;
+        let scanPos = openIdx + 6; // after <item>
+        while (depth > 0) {
+          const nextOpen = instSetXml.indexOf('<item>', scanPos);
+          const nextClose = instSetXml.indexOf('</item>', scanPos);
+          if (nextClose === -1) { scanPos = instSetXml.length; depth = 0; break; }
+          if (nextOpen !== -1 && nextOpen < nextClose) { depth++; scanPos = nextOpen + 6; }
+          else { depth--; scanPos = nextClose + 7; }
+        }
+        instancesXml.push(instSetXml.substring(openIdx + 6, scanPos - 7));
+        searchFrom = scanPos;
+      }
+      for (const instXml of instancesXml) {
         const parseTag = (tag) => {
           const m = instXml.match(new RegExp(`<${tag}>([^<]*)<\\/${tag}>`));
           return m ? m[1] : '';
@@ -1316,11 +1479,20 @@ async function fetchEC2(region, accessKeyId, secretAccessKey, params) {
         const tagRegex = /<item>\s*<key>Name<\/key>\s*<value>([^<]+)<\/value>\s*<\/item>/;
         const nameMatch = instXml.match(tagRegex);
 
+        // Count EBS volumes from blockDeviceMapping
+        let volumeCount = 0;
+        const bdmMatch = instXml.match(/<blockDeviceMapping>([\s\S]*?)<\/blockDeviceMapping>/);
+        if (bdmMatch) {
+          const ebsMatches = bdmMatch[1].match(/<ebs>/g);
+          if (ebsMatches) volumeCount = ebsMatches.length;
+        }
+
         instances.push({
           InstanceId: parseTag('instanceId'),
           State: { Name: stateMatch ? stateMatch[1] : 'unknown' },
           PublicIpAddress: parseTag('ipAddress'),
           InstanceType: parseTag('instanceType'),
+          VolumeCount: volumeCount,
           Tags: nameMatch ? [{ Key: 'Name', Value: nameMatch[1] }] : []
         });
       }
@@ -1336,6 +1508,7 @@ async function fetchEC2(region, accessKeyId, secretAccessKey, params) {
     _ec2Inflight.delete(cacheKey);
   }
 }
+
 async function getEC2Single(config) {
   requireEC2Config(config);
   const { region, targetInstanceId } = parseEC2RegionAndInstance(config.apiUrl);
@@ -1354,22 +1527,32 @@ async function getEC2Single(config) {
   }
 
   // If user specified an instance ID, find that one
+  let instance = null;
   if (targetInstanceId) {
-    const match = runningInstances.find(i => i.InstanceId === targetInstanceId);
-    if (!match) {
+    instance = runningInstances.find(i => i.InstanceId === targetInstanceId);
+    if (!instance) {
       throw new Error(`EC2 instance ${targetInstanceId} not found or not running. Available: ${runningInstances.map(i => i.InstanceId).join(', ')}`);
     }
-    return normalizeEC2Server(match);
+  } else if (runningInstances.length === 1) {
+    instance = runningInstances[0];
+  } else {
+    const ids = runningInstances.map(i => i.InstanceId).join(', ');
+    throw new Error(`Multiple EC2 instances found (${runningInstances.length}). Enter the instance ID in the URL: region/instance-id. Available: ${ids}`);
   }
 
-  // Single instance — auto-pick
-  if (runningInstances.length === 1) {
-    return normalizeEC2Server(runningInstances[0]);
-  }
+  // Enrich with disk size (DescribeVolumes) and month-to-date traffic (CloudWatch).
+  // Both are best-effort: failures (e.g. missing IAM permission) must not break status refresh.
+  const [diskGiB, trafficBytes] = await Promise.all([
+    getEC2VolumeSizeGiB(region, config.apiKey, config.apiHash, instance.InstanceId)
+      .catch(e => { console.warn('[EC2] DescribeVolumes failed (disk hidden). If AccessDenied, attach the `ec2:DescribeVolumes` permission. Error:', e.message || e); return 0; }),
+    getEC2MonthlyTrafficBytes(region, config.apiKey, config.apiHash, instance.InstanceId)
+      .catch(e => { console.warn('[EC2] CloudWatch traffic failed (bandwidth hidden). If AccessDenied, attach the `cloudwatch:GetMetricStatistics` permission to the IAM key. Error:', e.message || e); return 0; })
+  ]);
+  instance.DiskGiB = diskGiB;
+  instance.TrafficBytes = trafficBytes;
 
-  // Multiple instances — list them and ask user to specify
-  const ids = runningInstances.map(i => i.InstanceId).join(', ');
-  throw new Error(`Multiple EC2 instances found (${runningInstances.length}). Enter the instance ID in the URL: region/instance-id. Available: ${ids}`);
+  const server = normalizeEC2Server(instance);
+  return server;
 }
 
 async function callEC2Action(action, configOverride) {
@@ -1385,29 +1568,38 @@ async function callEC2Action(action, configOverride) {
   const apiAction = actionMap[action];
   if (!apiAction) throw new Error(`Unsupported EC2 action: ${action}`);
 
-  // If user specified an instance ID, use it directly
-  if (targetInstanceId) {
-    return await fetchEC2(region, config.apiKey, config.apiHash, {
-      Action: apiAction,
-      'InstanceId.1': targetInstanceId
-    });
+  // 1. If user specified an instance ID in URL, use it
+  let instanceId = targetInstanceId;
+
+  // 2. If config already has server ID starting with i-, reuse directly
+  if (!instanceId && config.id && String(config.id).startsWith('i-')) {
+    instanceId = config.id;
   }
 
-  // Otherwise discover from list
-  const listData = await fetchEC2(region, config.apiKey, config.apiHash, { Action: 'DescribeInstances' });
-  const reservations = listData.Reservations || [];
-  const instances = reservations.flatMap(r => r.Instances || []);
-  const runningInstances = instances.filter(i => {
-    const state = (i.State && i.State.Name) || '';
-    return state !== 'terminated';
-  });
-  if (runningInstances.length === 0) throw new Error('No EC2 instances found');
-  if (runningInstances.length > 1) throw new Error('Multiple instances found — specify instance ID in URL: region/instance-id');
+  // 3. Otherwise discover single running instance
+  if (!instanceId) {
+    const listData = await fetchEC2(region, config.apiKey, config.apiHash, { Action: 'DescribeInstances' });
+    const reservations = listData.Reservations || [];
+    const instances = reservations.flatMap(r => r.Instances || []);
+    const runningInstances = instances.filter(i => ((i.State && i.State.Name) || '') !== 'terminated');
+    if (runningInstances.length === 0) throw new Error('No EC2 instances found');
+    if (runningInstances.length > 1) throw new Error('Multiple instances found — specify instance ID in URL: region/instance-id');
+    instanceId = runningInstances[0].InstanceId;
+  }
 
-  return await fetchEC2(region, config.apiKey, config.apiHash, {
-    Action: apiAction,
-    'InstanceId.1': runningInstances[0].InstanceId
-  });
+  try {
+    return await fetchEC2(region, config.apiKey, config.apiHash, {
+      Action: apiAction,
+      'InstanceId.1': instanceId
+    });
+  } catch (e) {
+    // Friendlier message for state-race errors (instance was mid-transition when clicked)
+    const msg = String(e && e.message || '');
+    if (msg.includes('IncorrectInstanceState') || msg.includes('IncorrectState')) {
+      throw new Error(`Instance is mid-transition — wait a few seconds and refresh. (${msg})`);
+    }
+    throw e;
+  }
 }
 
 async function withActivePanel(handlerByPanel) {
@@ -1633,8 +1825,11 @@ const PANEL_HANDLERS = {
   }
 };
 
-async function bulkRefresh() {
-  const configs = await getAllServerConfigs();
+async function batchRefresh(serverIds) {
+  const allConfigs = await getAllServerConfigs();
+  const configs = serverIds && serverIds.length
+    ? allConfigs.filter(cfg => serverIds.indexOf(cfg.id) !== -1)
+    : allConfigs;
   const results = [];
   for (const cfg of configs) {
     try {
@@ -1648,8 +1843,11 @@ async function bulkRefresh() {
   return results;
 }
 
-async function bulkAction(action) {
-  const configs = await getAllServerConfigs();
+async function batchAction(action, serverIds) {
+  const allConfigs = await getAllServerConfigs();
+  const configs = serverIds && serverIds.length
+    ? allConfigs.filter(cfg => serverIds.indexOf(cfg.id) !== -1)
+    : allConfigs;
   const results = [];
   for (const cfg of configs) {
     try {
@@ -1671,9 +1869,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     reboot: rebootServer,
     boot: bootServer,
     shutdown: shutdownServer,
-    bulkRefresh,
-    bulkReboot: () => bulkAction('reboot'),
-    bulkShutdown: () => bulkAction('shutdown'),
+    batchRefresh: () => batchRefresh(message.serverIds),
+    batchReboot: () => batchAction('reboot', message.serverIds),
+    batchShutdown: () => batchAction('shutdown', message.serverIds),
     testConnection: () => testConnection(message.config)
   };
 

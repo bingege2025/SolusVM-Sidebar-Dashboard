@@ -5,227 +5,278 @@
   <title>VPS Dashboard — Settings</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; padding: 32px 24px; background: #f5f6f8; max-width: 860px; margin: 0 auto; color: #333; }
-    
-    .header-container {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 24px;
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      padding: 40px 48px; background: #f0f2f5;
+      max-width: 1120px; margin: 0 auto; color: #333;
     }
-    h1 { font-size: 22px; color: #1a1a1a; display: flex; align-items: center; gap: 8px; margin-bottom: 0; }
+
+    .header-container {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 28px;
+    }
+    h1 {
+      font-size: 22px; color: #111827; display: flex; align-items: center; gap: 8px;
+      margin-bottom: 0; font-weight: 700;
+    }
     .header-actions { display: inline-flex; align-items: center; gap: 10px; }
+    svg.lucide { display: block; flex-shrink: 0; }
     .theme-toggle {
-      width: 32px;
-      height: 32px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      border: 1px solid #dcdcdc;
-      border-radius: 8px;
-      background: white;
-      color: #526071;
-      font-size: 14px;
-      cursor: pointer;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.02);
-      transition: all 0.2s;
+      width: 34px; height: 34px;
+      display: inline-flex; align-items: center; justify-content: center;
+      border: 1.5px solid #d1d5db; border-radius: 9px;
+      background: white; color: #6b7280; cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
     }
     .theme-toggle:hover {
-      border-color: #4a90d9;
-      color: #1565c0;
-      box-shadow: 0 2px 8px rgba(74,144,217,0.1);
+      border-color: #3b82f6; color: #2563eb;
+      transform: translateY(-1px);
+      box-shadow: 0 3px 8px rgba(59,130,246,0.15);
     }
-    
+
     .lang-select {
-      padding: 6px 12px;
-      border: 1px solid #dcdcdc;
-      border-radius: 8px;
-      font-size: 13px;
-      outline: none;
-      cursor: pointer;
-      background: white;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.02);
-      font-weight: 500;
-      transition: all 0.2s;
+      padding: 7px 14px; border: 1.5px solid #d1d5db; border-radius: 9px;
+      font-size: 13px; outline: none; cursor: pointer; background: white;
+      font-weight: 500; transition: all 0.2s ease;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
     }
     .lang-select:hover {
-      border-color: #4a90d9;
-      box-shadow: 0 2px 8px rgba(74,144,217,0.1);
+      border-color: #3b82f6;
+      box-shadow: 0 3px 8px rgba(59,130,246,0.1);
     }
-    
-    .container { display: flex; gap: 24px; align-items: flex-start; }
-    .card { background: white; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.04); padding: 24px; border: 1px solid #eef0f2; }
-    
-    .left-panel { width: 320px; flex-shrink: 0; display: flex; flex-direction: column; gap: 16px; }
-    .right-panel { flex: 1; min-width: 0; }
-    
-    .server-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border: 1px solid #e8e8e8; border-radius: 8px; cursor: pointer; transition: all 0.2s; background: #fafafa; }
-    .server-item:hover { border-color: #4a90d9; background: #f7faff; }
-    .server-item.active { border-color: #4a90d9; background: #eef5fc; box-shadow: 0 0 0 2px rgba(74,144,217,0.15); }
-    
-    .server-info { display: flex; flex-direction: column; gap: 4px; overflow: hidden; flex: 1; }
-    .server-title-container { display: flex; align-items: center; }
-    .server-name { font-size: 13px; font-weight: 600; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .server-host { font-size: 11px; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    
-    .badge-default {
-      background: #ffb300;
-      color: white;
-      font-size: 9px;
-      font-weight: bold;
-      padding: 1px 4px;
-      border-radius: 4px;
-      margin-left: 6px;
-      display: inline-block;
-      line-height: 1.2;
-    }
-    
-    .server-actions { display: flex; gap: 4px; margin-left: 8px; }
-    .btn-icon { background: none; border: none; font-size: 13px; cursor: pointer; padding: 4px 6px; border-radius: 4px; transition: background 0.2s; color: #666; }
-    .btn-icon:hover { background: rgba(0,0,0,0.06); }
-    .btn-icon.del:hover { color: #f44336; background: #ffebee; }
-    .btn-icon.star { color: #ccc; font-size: 14px; }
-    .btn-icon.star:hover { color: #ffb300; background: #fff8e1; }
-    .btn-icon.star.active { color: #ffb300; }
-    
-    .btn-add { width: 100%; padding: 10px; border: 1px dashed #4a90d9; background: #f4f8fc; color: #4a90d9; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; text-align: center; transition: all 0.2s; }
-    .btn-add:hover { background: #eef5fc; border-style: solid; }
 
-    .config-tools { border-top: 1px solid #eef0f2; padding-top: 14px; display: flex; flex-direction: column; gap: 8px; }
-    .config-tools-title { font-size: 12px; font-weight: 700; color: #555; }
-    .config-tools-hint { font-size: 11px; line-height: 1.45; color: #999; }
-    .config-tools-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-    .btn-tool { padding: 8px 10px; border: 1px solid #dcdcdc; background: #fff; color: #444; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-    .btn-tool:hover { border-color: #4a90d9; color: #2f75b5; background: #f7faff; }
-    
-    .form-title { font-size: 16px; font-weight: 600; margin-bottom: 20px; color: #333; }
-    .form-group { margin-bottom: 16px; }
-    label { display: block; font-weight: 600; margin-bottom: 6px; color: #555; font-size: 13px; }
-    input, select { width: 100%; padding: 10px 12px; border: 1px solid #dcdcdc; border-radius: 8px; font-size: 14px; color: #333; transition: all 0.2s; background: white; }
-    input:focus, select:focus { outline: none; border-color: #4a90d9; box-shadow: 0 0 0 3px rgba(74,144,217,0.15); }
-    .input-group { position: relative; }
-    .input-group input { padding-right: 40px; }
-    .toggle-vis {
-      position: absolute;
-      right: 8px;
-      top: 50%;
-      transform: translateY(-50%);
-      background: none;
-      border: none;
-      cursor: pointer;
-      font-size: 16px;
-      padding: 4px;
-      line-height: 1;
-      color: #999;
-      transition: color 0.15s;
+    .container { display: flex; gap: 32px; align-items: flex-start; }
+    .card {
+      background: white; border-radius: 14px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06);
+      padding: 28px; border: 1px solid #e5e7eb;
     }
-    .toggle-vis:hover { color: #4a90d9; }
-    body.dark .toggle-vis { color: #6b7d95; }
-    body.dark .toggle-vis:hover { color: #9fc8f5; }
-    .hint { font-size: 11px; color: #999; margin-top: 4px; }
-    
-    .form-actions { display: flex; gap: 10px; margin-top: 24px; }
-    button.btn-primary { padding: 10px 24px; background: #4a90d9; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-    button.btn-primary:hover { background: #357abd; }
-    button.btn-secondary { padding: 10px 20px; background: #666; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-    button.btn-secondary:hover { background: #555; }
-    
-    .msg { margin-top: 16px; padding: 10px 14px; border-radius: 6px; font-size: 13px; display: none; line-height: 1.4; word-break: break-all; }
-    .msg.ok { display: block; background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; }
-    .msg.err { display: block; background: #fce4ec; color: #c62828; border: 1px solid #ffcdd2; }
+
+    .left-panel { width: 340px; flex-shrink: 0; display: flex; flex-direction: column; gap: 16px; }
+    .right-panel { flex: 1; min-width: 0; padding: 32px; }
+
+    .server-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 14px; border: 1.5px solid #e5e7eb; border-radius: 10px;
+      cursor: pointer; transition: all 0.2s ease; background: #f9fafb;
+    }
+    .server-item:hover {
+      border-color: #93c5fd; background: #f0f7ff;
+      transform: translateX(2px);
+    }
+    .server-item.active {
+      border-color: #3b82f6; background: #eff6ff;
+      box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+    }
+
+    .server-logo {
+      width: 28px; height: 28px; border-radius: 6px; flex-shrink: 0;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+      margin-right: 10px; align-self: center;
+    }
+    .server-info { display: flex; flex-direction: column; gap: 2px; overflow: hidden; flex: 1; }
+    .server-title-container { display: flex; align-items: center; }
+    .server-name {
+      font-size: 14px; font-weight: 600; color: #111827;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .server-host {
+      font-size: 11px; color: #b6bdc9;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+
+    .badge-default {
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      color: white; font-size: 9px; font-weight: 700;
+      padding: 2px 6px; border-radius: 5px; margin-left: 6px;
+      display: inline-block; line-height: 1.2;
+    }
+
+    .server-actions { display: flex; gap: 2px; margin-left: 8px; }
+    .btn-icon {
+      background: none; border: none; cursor: pointer;
+      padding: 5px 7px; border-radius: 6px;
+      display: inline-flex; align-items: center; justify-content: center;
+      transition: all 0.15s ease; color: #9ca3af;
+    }
+    .btn-icon:hover { background: #f3f4f6; color: #374151; }
+    .btn-icon.del:hover { color: #ef4444; background: #fef2f2; }
+    .btn-icon.star { color: #d1d5db; font-size: 15px; }
+    .btn-icon.star:hover { color: #f59e0b; background: #fffbeb; }
+    .btn-icon.star.active { color: #f59e0b; }
+    .btn-icon.copy:hover { color: #3b82f6; background: #eff6ff; }
+
+    .btn-add {
+      width: 100%; padding: 11px; border: 2px dashed #93c5fd;
+      background: #f0f7ff; color: #2563eb;
+      border-radius: 10px; font-size: 13px; font-weight: 600;
+      cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      transition: all 0.2s ease;
+    }
+    .btn-add:hover {
+      background: #dbeafe; border-color: #3b82f6; border-style: solid;
+      transform: translateY(-1px);
+    }
+
+    .config-tools { border-top: 1px solid #e5e7eb; padding-top: 16px; display: flex; flex-direction: column; gap: 8px; }
+    .config-tools-title { font-size: 12px; font-weight: 700; color: #374151; }
+    .config-tools-hint { font-size: 11px; line-height: 1.45; color: #9ca3af; }
+    .config-tools-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .btn-tool {
+      padding: 9px 10px; border: 1.5px solid #d1d5db;
+      background: white; color: #4b5563;
+      border-radius: 9px; font-size: 12px; font-weight: 600; cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .btn-tool:hover {
+      border-color: #3b82f6; color: #2563eb;
+      background: #f0f7ff; transform: translateY(-1px);
+    }
+
+    .form-title { font-size: 17px; font-weight: 700; margin-bottom: 22px; color: #111827; }
+    .form-group { margin-bottom: 18px; }
+    label { display: block; font-weight: 600; margin-bottom: 7px; color: #374151; font-size: 13px; }
+    input, select {
+      width: 100%; padding: 11px 14px;
+      border: 1.5px solid #d1d5db; border-radius: 10px;
+      font-size: 14px; color: #1f2937; transition: all 0.2s ease; background: white;
+    }
+    input:hover, select:hover { border-color: #93c5fd; }
+    input:focus, select:focus {
+      outline: none; border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59,130,246,0.12);
+    }
+    .input-group { position: relative; }
+    .input-group input { padding-right: 42px; }
+    .toggle-vis {
+      position: absolute; right: 10px; top: 50%;
+      transform: translateY(-50%);
+      background: none; border: none; cursor: pointer;
+      padding: 4px; line-height: 1;
+      display: inline-flex; align-items: center; justify-content: center;
+      color: #9ca3af; transition: color 0.15s;
+    }
+    .toggle-vis:hover { color: #3b82f6; }
+    body.dark .toggle-vis { color: #6b7280; }
+    body.dark .toggle-vis:hover { color: #8ab4ff; }
+    .hint { font-size: 11px; color: #9ca3af; margin-top: 5px; line-height: 1.4; }
+
+    .form-actions { display: flex; gap: 10px; margin-top: 26px; }
+    button.btn-primary {
+      padding: 11px 26px; background: linear-gradient(135deg, #3b82f6, #2563eb);
+      color: white; border: none; border-radius: 10px;
+      font-size: 14px; font-weight: 600; cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 6px rgba(59,130,246,0.3);
+    }
+    button.btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(59,130,246,0.35);
+    }
+    button.btn-secondary {
+      padding: 11px 22px; background: #6b7280; color: white;
+      border: none; border-radius: 10px; font-size: 14px; font-weight: 600;
+      cursor: pointer; transition: all 0.2s ease;
+    }
+    button.btn-secondary:hover { background: #4b5563; transform: translateY(-1px); }
+
+    .msg {
+      margin-top: 16px; padding: 12px 16px; border-radius: 10px;
+      font-size: 13px; display: none; line-height: 1.5;
+      word-break: break-all;
+      animation: fadeSlideIn 0.2s ease;
+    }
+    @keyframes fadeSlideIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .msg.ok { display: block; background: #ecfdf5; color: #059669; border: 1.5px solid #a7f3d0; }
+    .msg.err { display: block; background: #fef2f2; color: #dc2626; border: 1.5px solid #fecaca; }
 
     body.dark {
-      background: #121821;
-      color: #dbe4ef;
+      background: #1a1d23; color: #d4d9e0;
     }
-    body.dark h1 {
-      color: #f2f6fb;
-    }
+    body.dark h1 { color: #e6e9ef; }
     body.dark .card {
-      background: #182231;
-      border-color: #263448;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.22);
+      background: #22262e; border-color: #2e333d;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
     }
     body.dark .lang-select,
     body.dark .theme-toggle,
     body.dark input,
     body.dark select {
-      background: #101722;
-      border-color: #314054;
-      color: #e6edf6;
+      background: #1a1d23; border-color: #3a404c; color: #e6e9ef;
     }
     body.dark .lang-select:hover,
-    body.dark .theme-toggle:hover,
-    body.dark input:focus,
-    body.dark select:focus {
-      border-color: #4a90d9;
-      box-shadow: 0 0 0 3px rgba(74,144,217,0.16);
+    body.dark .theme-toggle:hover {
+      border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
     }
-    body.dark .server-item {
-      background: #101722;
-      border-color: #2a384b;
+    body.dark input:hover, body.dark select:hover { border-color: #60a5fa; }
+    body.dark input:focus, body.dark select:focus {
+      border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
     }
-    body.dark .server-item:hover,
-    body.dark .server-item.active {
-      background: #172b42;
-      border-color: #4a90d9;
-    }
-    body.dark .server-name,
-    body.dark .form-title,
-    body.dark label {
-      color: #e6edf6;
-    }
-    body.dark .server-host,
-    body.dark .hint,
-    body.dark .config-tools-hint {
-      color: #95a3b5;
-    }
-    body.dark .config-tools {
-      border-top-color: #263448;
-    }
-    body.dark .config-tools-title {
-      color: #dbe4ef;
-    }
-    body.dark .btn-add {
-      background: #132338;
-      border-color: #4a90d9;
-      color: #9fc8f5;
-    }
-    body.dark .btn-add:hover,
-    body.dark .btn-tool:hover {
-      background: #172b42;
-    }
-    body.dark .btn-tool {
-      background: #101722;
-      border-color: #314054;
-      color: #dbe4ef;
-    }
-    body.dark .btn-icon:hover {
-      background: rgba(255,255,255,0.08);
-    }
-    body.dark .btn-icon.del:hover {
-      background: #351a22;
-    }
-    body.dark .btn-icon.star:hover {
-      background: #342912;
-    }
-    body.dark .msg.ok {
-      background: #173820;
-      color: #8ce99a;
-      border-color: #285c35;
-    }
-    body.dark .msg.err {
-      background: #3a1c25;
-      color: #ff9aaa;
-      border-color: #6a2b39;
+    body.dark .server-item { background: #1e2229; border-color: #2e333d; }
+    body.dark .server-item:hover { background: #243c5e; border-color: #3b82f6; }
+    body.dark .server-item.active { background: #243c5e; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25); }
+    body.dark .server-name, body.dark .form-title, body.dark label { color: #e6e9ef; }
+    body.dark .server-host { color: #6f7887; }
+    body.dark .hint, body.dark .config-tools-hint { color: #7d8694; }
+    body.dark .config-tools { border-top-color: #2e333d; }
+    body.dark .config-tools-title { color: #d4d9e0; }
+    body.dark .btn-add { background: #1d2f49; border-color: #3b82f6; color: #8ab4ff; }
+    body.dark .btn-add:hover { background: #243c5e; }
+    body.dark .btn-tool { background: #22262e; border-color: #3a404c; color: #d4d9e0; }
+    body.dark .btn-tool:hover { background: #243c5e; }
+    body.dark .btn-icon { color: #6f7887; }
+    body.dark .btn-icon:hover { background: #2a2f39; color: #d4d9e0; }
+    body.dark .btn-icon.del:hover { background: #3d1414; }
+    body.dark .btn-icon.star:hover { background: #342912; }
+    body.dark .btn-icon.copy:hover { background: #243c5e; color: #8ab4ff; }
+    body.dark .msg.ok { background: #0d2818; color: #7ee2b0; border-color: #1c5c38; }
+    body.dark .msg.err { background: #3d1414; color: #fca5a5; border-color: #7f1d1d; }
+
+    @media (max-width: 900px) {
+      body {
+        padding: 28px 20px;
+        max-width: 100%;
+      }
+      .header-container {
+        gap: 16px;
+        align-items: flex-start;
+        flex-direction: column;
+      }
+      .container {
+        flex-direction: column;
+        gap: 20px;
+      }
+      .left-panel,
+      .right-panel {
+        width: 100%;
+      }
+      .card,
+      .right-panel {
+        padding: 22px;
+      }
     }
   </style>
 </head>
 <body>
   <div class="header-container">
-    <h1 id="i18n_title">⚙️ VPS Dashboard · Config Center</h1>
+    <h1 id="i18n_title">
+      <svg class="lucide" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+        <circle cx="12" cy="12" r="3"/>
+      </svg>
+      <span>VPS Dashboard · Config Center</span>
+    </h1>
     <div class="header-actions">
-      <button type="button" id="themeToggle" class="theme-toggle" title="Toggle dark mode" aria-label="Toggle dark mode">☾</button>
+      <button type="button" id="themeToggle" class="theme-toggle" title="Toggle dark mode" aria-label="Toggle dark mode">
+        <svg class="lucide" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+      </button>
       <select id="languageSelect" class="lang-select">
         <option value="zh">简体中文</option>
         <option value="en">English</option>
@@ -239,7 +290,12 @@
   <div class="container">
     <!-- Left Panel: Server List -->
     <div class="left-panel card">
-      <button id="addBtn" class="btn-add">➕ Add New Server</button>
+      <button id="addBtn" class="btn-add">
+        <svg class="lucide" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M5 12h14"/><path d="M12 5v14"/>
+        </svg>
+        <span>Add New Server</span>
+      </button>
       <div id="serverList" style="display: flex; flex-direction: column; gap: 10px; max-height: 460px; overflow-y: auto; padding-right: 2px;">
         <!-- Server list rendered dynamically -->
       </div>
@@ -268,14 +324,9 @@
         <label id="i18n_labelPanelType">Panel Type</label>
         <select id="panelType">
           <option value="solusvm" selected>SolusVM v1</option>
+          <option value="ec2">AWS EC2</option>
           <option value="solusvm2">SolusVM v2 (experimental)</option>
           <option value="virtfusion">VirtFusion (experimental)</option>
-          <option value="virtualizor">Virtualizor (experimental)</option>
-          <option value="proxmox">Proxmox VE (experimental)</option>
-          <option value="hetzner">Hetzner Cloud (experimental)</option>
-          <option value="digitalocean">DigitalOcean (experimental)</option>
-          <option value="lightsail">AWS Lightsail</option>
-          <option value="ec2">AWS EC2 (experimental)</option>
         </select>
         <div id="i18n_hintPanelType" class="hint">Select the control panel this VPS uses (more types coming soon)</div>
       </div>
@@ -290,7 +341,11 @@
         <label id="i18n_labelKey">API Key</label>
         <div class="input-group">
           <input type="password" id="apiKey" placeholder="Enter API Key">
-          <button type="button" class="toggle-vis" data-target="apiKey" title="Show/Hide">👁</button>
+          <button type="button" class="toggle-vis" data-target="apiKey" title="Show/Hide">
+            <svg class="lucide" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>
+            </svg>
+          </button>
         </div>
         <div id="i18n_hintKey" class="hint">Generate in your control panel → API tab</div>
       </div>
@@ -299,7 +354,11 @@
         <label id="i18n_labelHash">API Hash</label>
         <div class="input-group">
           <input type="password" id="apiHash" placeholder="Enter API Hash">
-          <button type="button" class="toggle-vis" data-target="apiHash" title="Show/Hide">👁</button>
+          <button type="button" class="toggle-vis" data-target="apiHash" title="Show/Hide">
+            <svg class="lucide" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>
+            </svg>
+          </button>
         </div>
         <div id="i18n_hintHash" class="hint">Generate in your control panel → API tab</div>
       </div>

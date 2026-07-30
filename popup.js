@@ -3,6 +3,7 @@
 const $ = id => document.getElementById(id);
 let privacyModeEnabled = false;
 let darkModeEnabled = false;
+let allServers = [];
 
 // Global exception handlers
 window.onerror = function(message, source, lineno, colno, error) {
@@ -46,10 +47,11 @@ function formatResource(val) {
 }
 
 // Send message to background service worker (Promise-based, with safety net)
-function sendMessage(action) {
+function sendMessage(action, extraData) {
+  extraData = extraData || {};
   return new Promise(resolve => {
     try {
-      chrome.runtime.sendMessage({ action }, response => {
+      chrome.runtime.sendMessage({ action, ...extraData }, response => {
         if (chrome.runtime.lastError) {
           const errMsg = chrome.runtime.lastError.message;
           if (errMsg.includes('context invalidated')) {
@@ -130,7 +132,28 @@ function escapeHtml(str) {
                     .replace(/'/g, '&#039;');
 }
 
-// normalizeTagList, normalizeServers, getAllTagsFromServers → shared.js
+// normalizeTagList, normalizeServers, getAllTagsFromServers, PROVIDER_META, getProviderMeta → shared.js
+
+// Deterministic hue (0-359) from tag name — same tag always gets the same chip color
+function getTagHue(tag) {
+  let hash = 0;
+  const str = String(tag);
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash * 31 + str.charCodeAt(i)) >>> 0;
+  }
+  return hash % 360;
+}
+
+// Update the header selector trigger: provider logo + name (line 1), server alias (line 2)
+function updateTriggerDisplay(server) {
+  const triggerLogo = $('triggerLogo');
+  const providerEl = $('selectedProviderName');
+  const aliasEl = $('selectedServerName');
+  const meta = server ? getProviderMeta(server.panel_type) : null;
+  if (triggerLogo) triggerLogo.src = meta ? meta.logo : PROVIDER_META_DEFAULT.logo;
+  if (providerEl) providerEl.textContent = meta ? meta.name : '';
+  if (aliasEl) aliasEl.textContent = server ? server.name : window.t('noServers');
+}
 
 function updatePrivacyToggle() {
   const btn = $('privacyToggle');
@@ -159,7 +182,7 @@ function setPrivacyMode(enabled, persist) {
 function updateThemeToggle() {
   const btn = $('themeToggle');
   if (!btn) return;
-  btn.textContent = darkModeEnabled ? '☀' : '☾';
+  btn.innerHTML = lucideIcon(darkModeEnabled ? 'sun' : 'moon', 14);
   btn.title = darkModeEnabled ? window.t('lightMode') : window.t('darkMode');
   btn.setAttribute('aria-label', btn.title);
 }
@@ -197,8 +220,8 @@ if (themeToggle) {
 
 // ---- Feedback section binding ----
 
-const GITHUB_ISSUES_URL = 'https://github.com/bingege2025/SolusVM-Sidebar-Dashboard/issues';
-const GITHUB_NEW_ISSUE_URL = 'https://github.com/bingege2025/SolusVM-Sidebar-Dashboard/issues/new';
+const GITHUB_ISSUES_URL = 'https://github.com/bingege2025/VPS-Sidebar-Dashboard/issues';
+const GITHUB_NEW_ISSUE_URL = 'https://github.com/bingege2025/VPS-Sidebar-Dashboard/issues/new';
 const FORUM_URL = 'https://lowendtalk.com/discussion/217453/idea-discussion-a-minimalist-chrome-sidepanel-dashboard-for-managing-multi-solusvm-racknerd-apis#latest';
 const DEV_EMAIL = 'renyanbin.wang@gmail.com';
 
@@ -278,7 +301,7 @@ if (feedbackEmailBtn) {
   const t = window.t;
 
   // 将 lang 与其他数据一起读取，确保渲染前语言已就绪
-  safeStorageGet(['servers', 'currentServerId', 'defaultServerId', 'tags', 'privacyModeEnabled', 'darkModeEnabled', 'apiUrl', 'apiKey', 'apiHash', 'lang'], data => {
+  safeStorageGet(['servers', 'currentServerId', 'defaultServerId', 'tags', 'privacyModeEnabled', 'darkModeEnabled', 'apiUrl', 'apiKey', 'apiHash', 'lang', 'recentServerIds'], data => {
     if (!data) {
       // Storage timed out or errored — show retry prompt
       main.innerHTML = `
@@ -329,6 +352,7 @@ if (feedbackEmailBtn) {
     }
 
     const normalizedServers = normalizeServers(list);
+    allServers = normalizedServers;
     privacyModeEnabled = Boolean(data.privacyModeEnabled);
     const allTags = getAllTagsFromServers(normalizedServers);
     
@@ -349,8 +373,7 @@ if (feedbackEmailBtn) {
       const goConfig = $('goConfig');
       if (goConfig) goConfig.addEventListener('click', e => { e.preventDefault(); chrome.runtime.openOptionsPage(); });
       if (statusBar) statusBar.style.display = 'none';
-      const selectedName = $('selectedServerName');
-      if (selectedName) selectedName.textContent = t('noServers');
+      updateTriggerDisplay(null);
       return;
     }
 
@@ -378,13 +401,22 @@ if (feedbackEmailBtn) {
     if (customSelect && selectTrigger && selectedServerName && selectDropdown && serverSearchInput && selectOptions) {
       serverSearchInput.placeholder = t('searchPlaceholder') || 'Search servers...';
       let activeTag = '';
+      let recentIds = (Array.isArray(data.recentServerIds) ? data.recentServerIds : [])
+        .filter(id => data.servers.some(s => s.id === id))
+        .slice(0, 5);
+
+      const kbdHint = $('searchKbdHint');
+      const updateKbdHint = () => {
+        if (!kbdHint) return;
+        kbdHint.textContent = serverSearchInput.value.trim() ? '↵' : 'esc';
+      };
 
       const renderTagFilter = () => {
         if (!tagFilter) return;
         const tagsMarkup = [
-          `<button type="button" class="tag-pill ${activeTag === '' ? 'active' : ''}" data-tag="">${escapeHtml(t('allTags') || 'All')}</button>`,
+          `<button type="button" class="tag-pill tag-all ${activeTag === '' ? 'active' : ''}" data-tag="">${escapeHtml(t('allTags') || 'All')}</button>`,
           ...allTags.map(tag => (
-            `<button type="button" class="tag-pill ${tag.toLowerCase() === activeTag.toLowerCase() ? 'active' : ''}" data-tag="${escapeHtml(tag)}" title="${escapeHtml(tag)}">${escapeHtml(tag)}</button>`
+            `<button type="button" class="tag-pill ${tag.toLowerCase() === activeTag.toLowerCase() ? 'active' : ''}" data-tag="${escapeHtml(tag)}" title="${escapeHtml(tag)}" style="--chip-h: ${getTagHue(tag)}">${escapeHtml(tag)}</button>`
           ))
         ].join('');
 
@@ -399,6 +431,16 @@ if (feedbackEmailBtn) {
         });
       };
       
+      const optionHtml = (s) => {
+        const meta = getProviderMeta(s.panel_type);
+        return `<div class="select-option ${s.id === activeId ? 'selected' : ''}" data-id="${escapeHtml(s.id)}">` +
+          `<img class="option-logo" src="${meta.logo}" alt="">` +
+          `<div class="option-text">` +
+            `<span class="option-provider">${escapeHtml(meta.name)}</span>` +
+            `<span class="option-alias">${escapeHtml(s.name)}</span>` +
+          `</div></div>`;
+      };
+
       const renderOptions = (query) => {
         const normalizedQuery = query.trim().toLowerCase();
         const normalizedTag = activeTag.toLowerCase();
@@ -417,21 +459,33 @@ if (feedbackEmailBtn) {
           selectOptions.innerHTML = `<div class="select-option no-results">${t('noTagMatches') || t('noServers')}</div>`;
           return;
         }
-        selectOptions.innerHTML = filtered.map(s => 
-          `<div class="select-option ${s.id === activeId ? 'selected' : ''}" data-id="${escapeHtml(s.id)}">${escapeHtml(s.name)}</div>`
-        ).join('');
+        // Raycast-style "Recent" group: only when browsing (no query / no tag filter)
+        const recentServers = recentIds.map(id => filtered.find(s => s.id === id)).filter(Boolean);
+        const restServers = filtered.filter(s => !recentIds.includes(s.id));
+        const showGroups = !normalizedQuery && !normalizedTag && recentServers.length > 0 && restServers.length > 0;
+        if (showGroups) {
+          selectOptions.innerHTML =
+            `<div class="select-group-label">${escapeHtml(t('recentServers') || 'Recent')}</div>` +
+            recentServers.map(optionHtml).join('') +
+            `<div class="select-group-label">${escapeHtml(t('allServers') || 'All Servers')}</div>` +
+            restServers.map(optionHtml).join('');
+        } else {
+          selectOptions.innerHTML = filtered.map(optionHtml).join('');
+        }
 
         const optionNodes = selectOptions.querySelectorAll('.select-option:not(.no-results)');
         optionNodes.forEach(node => {
           node.addEventListener('click', e => {
             const newId = node.getAttribute('data-id');
             activeId = newId;
-            chrome.storage.local.set({ currentServerId: newId }, () => {
+            recentIds = [newId, ...recentIds.filter(id => id !== newId)].slice(0, 5);
+            chrome.storage.local.set({ currentServerId: newId, recentServerIds: recentIds }, () => {
               customSelect.classList.remove('open');
               selectDropdown.style.display = 'none';
               serverSearchInput.value = '';
+              updateKbdHint();
               const activeServer = data.servers.find(s => s.id === activeId);
-              selectedServerName.textContent = activeServer ? activeServer.name : (t('noServers'));
+              updateTriggerDisplay(activeServer);
               refreshInfo(t, main, statusBar);
             });
           });
@@ -439,7 +493,7 @@ if (feedbackEmailBtn) {
       };
 
       const activeServer = data.servers.find(s => s.id === activeId);
-      selectedServerName.textContent = activeServer ? activeServer.name : (t('noServers'));
+      updateTriggerDisplay(activeServer);
       renderTagFilter();
       renderOptions('');
 
@@ -455,6 +509,7 @@ if (feedbackEmailBtn) {
             selectDropdown.style.display = 'block';
             serverSearchInput.focus();
             serverSearchInput.select();
+            updateKbdHint();
           }
         });
         selectTrigger.dataset.listenerBound = 'true';
@@ -463,6 +518,21 @@ if (feedbackEmailBtn) {
       if (!serverSearchInput.dataset.listenerBound) {
         serverSearchInput.addEventListener('input', e => {
           renderOptions(e.target.value);
+          updateKbdHint();
+        });
+        serverSearchInput.addEventListener('keydown', e => {
+          if (e.key === 'Escape') {
+            e.preventDefault();
+            customSelect.classList.remove('open');
+            selectDropdown.style.display = 'none';
+            serverSearchInput.value = '';
+            renderOptions('');
+            updateKbdHint();
+          } else if (e.key === 'Enter') {
+            e.preventDefault();
+            const first = selectOptions.querySelector('.select-option:not(.no-results)');
+            if (first) first.click();
+          }
         });
         serverSearchInput.addEventListener('click', e => e.stopPropagation());
         serverSearchInput.dataset.listenerBound = 'true';
@@ -564,7 +634,6 @@ function renderServerInfo(status, info, t, main) {
   t = t || window.t;
   main = main || $('main');
   if (!main) return;
-  console.log('[DEBUG] renderServerInfo: status =', status, 'info =', info);
 
   const candidates = [
     status.vmstat,
@@ -579,58 +648,91 @@ function renderServerInfo(status, info, t, main) {
 
   const isOnline = candidates.some(val => {
     const v = String(val).toLowerCase();
+    if (v.includes('offline') || v.includes('stopped') || v.includes('shutdown') || v === 'down') return false;
     return v.includes('online') || v.includes('running') || v.includes('active') || v.includes('started') || v.includes('booted') || v === 'up';
   });
 
+  // Detect transitional states (e.g. EC2: pending / stopping / shutting-down)
+  // Power actions are not allowed in these states — AWS rejects them.
+  let transitionState = null;
+  const isTransitioning = !isOnline && candidates.some(val => {
+    const v = String(val).toLowerCase();
+    if (['pending', 'stopping', 'shutting', 'starting', 'rebooting', 'initializing'].some(kw => v.includes(kw))) {
+      transitionState = String(val);
+      return true;
+    }
+    return false;
+  });
+
   main.innerHTML = `
-    <div class="content">
+    <div class="content" id="serverDetail">
       <div class="info-grid">
         <span class="label">${t('hostname')}</span>
-        <span class="value privacy-field">${escapeHtml(info.hostname || '-')}</span>
+        <span class="value privacy-field" data-field="hostname">${escapeHtml(info.hostname || '-')}</span>
         <span class="label">${t('status')}</span>
-        <span class="value"><span class="status-badge ${isOnline ? 'online' : 'offline'}">${isOnline ? t('online') : t('offline')}</span></span>
+        <span class="value"><span class="status-badge ${isOnline ? 'online' : (isTransitioning ? 'transitioning' : 'offline')}" data-field="status">${isOnline ? t('online') : (isTransitioning ? escapeHtml(transitionState) : t('offline'))}</span></span>
         <span class="label">${t('ip')}</span>
-        <span class="value privacy-field">${escapeHtml(info.ipaddress || status.ip || '-')}</span>
+        <span class="value privacy-field" data-field="ip">${escapeHtml(info.ipaddress || status.ip || '-')}</span>
         <span class="label">${t('os')}</span>
-        <span class="value">${escapeHtml(info.os || info.template || '-')}</span>
+        <span class="value" data-field="os">${escapeHtml(info.os || info.template || '-')}</span>
         <span class="label">${t('mem')}</span>
-        <span class="value">${formatResource(info.mem)}</span>
+        <span class="value" data-field="mem">${formatResource(info.mem)}</span>
         <span class="label">${t('hdd')}</span>
-        <span class="value">${formatResource(info.hdd)}</span>
+        <span class="value" data-field="hdd">${formatResource(info.hdd)}</span>
         <span class="label">${t('bw')}</span>
-        <span class="value">${formatResource(info.bw)}</span>
+        <span class="value" data-field="bw">${formatResource(info.bw)}</span>
       </div>
       <div class="actions">
-        <button class="btn-refresh" id="refreshBtn">${t('btnRefresh')}</button>
-        <button class="btn-reboot" id="rebootBtn">${t('btnReboot')}</button>
-        ${isOnline
-          ? `<button class="btn-shutdown" id="shutdownBtn">${t('btnShutdown')}</button>`
-          : `<button class="btn-boot" id="bootBtn">${t('btnBoot')}</button>`
+        <button class="btn-refresh" id="refreshBtn">${lucideIcon('refresh', 15)}${t('btnRefresh')}</button>
+        ${isTransitioning
+          ? `<button class="btn-transitioning" id="transitioningBtn" disabled>${lucideIcon('loader', 15)}${t('stateTransitioning', { state: escapeHtml(transitionState) })}</button>`
+          : isOnline
+          ? `<button class="btn-reboot" id="rebootBtn">${lucideIcon('reboot', 15)}${t('btnReboot')}</button>
+             <button class="btn-shutdown" id="shutdownBtn">${lucideIcon('power', 15)}${t('btnShutdown')}</button>`
+          : `<button class="btn-boot" id="bootBtn">${lucideIcon('play', 15)}${t('btnBoot')}</button>`
         }
       </div>
+      <div id="confirmPanelHost"></div>
+      <div class="batch-select-panel">
+        <div class="batch-select-bar">
+          <span class="batch-hint">${t('batchSelectHint')}</span>
+          <button type="button" class="batch-toggle" id="batchSelectAllBtn">${t('selectAll')}</button>
+        </div>
+        <div class="batch-server-list" id="batchServerList">
+          ${allServers.map(s => `
+            <label class="batch-server-row">
+              <input type="checkbox" class="batch-checkbox" value="${escapeHtml(s.id)}">
+              <span class="batch-server-name">${escapeHtml(s.name)}</span>
+            </label>
+          `).join('')}
+        </div>
+      </div>
       <div class="bulk-bar">
-        <button id="bulkRefreshBtn">🔄 ${t('bulkRefresh')}</button>
-        <button class="bulk-reboot" id="bulkRebootBtn">🔁 ${t('bulkReboot')}</button>
-        <button class="bulk-shutdown" id="bulkShutdownBtn">⏹ ${t('bulkShutdown')}</button>
+        <button id="batchRefreshBtn">${lucideIcon('refresh', 14)}${t('batchRefresh')}</button>
+        <button class="bulk-reboot" id="batchRebootBtn">${lucideIcon('reboot', 14)}${t('batchReboot')}</button>
+        <button class="bulk-shutdown" id="batchShutdownBtn">${lucideIcon('power', 14)}${t('batchShutdown')}</button>
       </div>
       <div class="bulk-result" id="bulkResultHost"></div>
-      <div id="confirmPanelHost"></div>
     </div>`;
 
   applyPrivacyMode();
 
   const hostname = info.hostname || '-';
 
-  $('refreshBtn').addEventListener('click', () => refreshInfo(t, main, $('statusBar'), true));
-  $('rebootBtn').addEventListener('click', () => {
-    showInlineConfirm({
-      message: t('confirmReboot', { hostname }),
-      actionLabel: t('btnReboot'),
-      danger: false,
-      onConfirm: () => doAction('reboot', t('reboot'), t, main)
+  $('refreshBtn').addEventListener('click', () => doAction('refresh', t('btnRefresh'), t, main));
+  if (isTransitioning) {
+    // No power actions while transitioning — auto refresh to pick up the settled state
+    setTimeout(() => silentUpdateCurrentServer(t), 8000);
+  } else if (isOnline) {
+    const rebootBtn = $('rebootBtn');
+    if (rebootBtn) rebootBtn.addEventListener('click', () => {
+      showInlineConfirm({
+        message: t('confirmReboot', { hostname }),
+        actionLabel: t('btnReboot'),
+        danger: false,
+        onConfirm: () => doAction('reboot', t('reboot'), t, main)
+      });
     });
-  });
-  if (isOnline) {
     const btn = $('shutdownBtn');
     if (btn) btn.addEventListener('click', () => {
       showInlineConfirm({
@@ -645,25 +747,51 @@ function renderServerInfo(status, info, t, main) {
     if (btn) btn.addEventListener('click', () => doAction('boot', t('boot'), t, main));
   }
 
-  // Bulk action buttons
-  const bulkRefreshBtn = $('bulkRefreshBtn');
-  if (bulkRefreshBtn) bulkRefreshBtn.addEventListener('click', () => doBulkAction('bulkRefresh', t('bulkRefresh'), t, main));
-  const bulkRebootBtn = $('bulkRebootBtn');
-  if (bulkRebootBtn) bulkRebootBtn.addEventListener('click', () => {
+  // Batch selection: select all / deselect all
+  const batchSelectAllBtn = $('batchSelectAllBtn');
+  const batchServerList = $('batchServerList');
+  if (batchSelectAllBtn && batchServerList) {
+    let allSelected = false;
+    batchSelectAllBtn.addEventListener('click', () => {
+      allSelected = !allSelected;
+      const checkboxes = batchServerList.querySelectorAll('.batch-checkbox');
+      checkboxes.forEach(cb => { cb.checked = allSelected; });
+      batchSelectAllBtn.textContent = allSelected ? t('deselectAll') : t('selectAll');
+    });
+  }
+
+  // Batch action buttons
+  function getSelectedServerIds() {
+    const checkboxes = document.querySelectorAll('#batchServerList .batch-checkbox:checked');
+    return Array.from(checkboxes).map(cb => cb.value);
+  }
+
+  const batchRefreshBtn = $('batchRefreshBtn');
+  if (batchRefreshBtn) batchRefreshBtn.addEventListener('click', () => {
+    const ids = getSelectedServerIds();
+    if (ids.length === 0) return;
+    doBulkAction('batchRefresh', t('batchRefresh'), t, main, ids);
+  });
+  const batchRebootBtn = $('batchRebootBtn');
+  if (batchRebootBtn) batchRebootBtn.addEventListener('click', () => {
+    const ids = getSelectedServerIds();
+    if (ids.length === 0) return;
     showInlineConfirm({
-      message: t('confirmBulkReboot'),
-      actionLabel: t('bulkReboot'),
+      message: t('confirmBatchReboot'),
+      actionLabel: t('batchReboot'),
       danger: false,
-      onConfirm: () => doBulkAction('bulkReboot', t('bulkReboot'), t, main)
+      onConfirm: () => doBulkAction('batchReboot', t('batchReboot'), t, main, ids)
     });
   });
-  const bulkShutdownBtn = $('bulkShutdownBtn');
-  if (bulkShutdownBtn) bulkShutdownBtn.addEventListener('click', () => {
+  const batchShutdownBtn = $('batchShutdownBtn');
+  if (batchShutdownBtn) batchShutdownBtn.addEventListener('click', () => {
+    const ids = getSelectedServerIds();
+    if (ids.length === 0) return;
     showInlineConfirm({
-      message: t('confirmBulkShutdown'),
-      actionLabel: t('bulkShutdown'),
+      message: t('confirmBatchShutdown'),
+      actionLabel: t('batchShutdown'),
       danger: true,
-      onConfirm: () => doBulkAction('bulkShutdown', t('bulkShutdown'), t, main)
+      onConfirm: () => doBulkAction('batchShutdown', t('batchShutdown'), t, main, ids)
     });
   });
 }
@@ -679,6 +807,8 @@ function showInlineConfirm({ message, actionLabel, danger, onConfirm }) {
         <button type="button" class="btn-confirm-action ${danger ? 'danger' : ''}" id="confirmActionBtn">${escapeHtml(actionLabel)}</button>
       </div>
     </div>`;
+
+  host.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
   const cancelBtn = $('confirmCancelBtn');
   const actionBtn = $('confirmActionBtn');
@@ -699,29 +829,37 @@ function showInlineConfirm({ message, actionLabel, danger, onConfirm }) {
 
 function doAction(action, label, t, main) {
   t = t || window.t;
-  main = main || $('main');
-  if (!main) return;
-  main.innerHTML = `<div class="loading">${t('loadingAction', { action: label })}</div>`;
+  const statusBar = $('statusBar');
+  if (statusBar) {
+    statusBar.style.display = 'block';
+    statusBar.textContent = `⏳ ${label}...`;
+  }
 
+  if (action === 'refresh') {
+    silentUpdateCurrentServer(t);
+    return;
+  }
+
+  // Reboot / shutdown / boot
   sendMessage(action).then(res => {
     if (res.success) {
-      main.innerHTML = `<div class="loading">${t('sentAction', { action: label })}</div>`;
-      setTimeout(() => refreshInfo(t, main, $('statusBar'), true), 5000);
+      if (statusBar) statusBar.textContent = t('sentAction', { action: label });
+      setTimeout(() => silentUpdateCurrentServer(t), 5000);
     } else {
-      main.innerHTML = `<div class="error">${t('actionFail', { action: label, error: res.error })}</div>`;
+      if (statusBar) statusBar.textContent = t('actionFail', { action: label, error: res.error });
     }
   });
 }
 
 // ---- Bulk operations ----
 
-function doBulkAction(action, label, t, main) {
+function doBulkAction(action, label, t, main, serverIds) {
   t = t || window.t;
   main = main || $('main');
   const resultHost = $('bulkResultHost');
   if (resultHost) resultHost.innerHTML = `<span style="color:#999;">⏳ ${label}...</span>`;
 
-  sendMessage(action).then(res => {
+  sendMessage(action, { serverIds }).then(res => {
     if (!res.success) {
       if (resultHost) resultHost.innerHTML = `<span class="err">❌ ${res.error}</span>`;
       return;
@@ -737,7 +875,140 @@ function doBulkAction(action, label, t, main) {
         : `<div class="err">❌ ${escapeHtml(r.name)}: ${escapeHtml(r.error)}</div>`;
     });
 
-    if (resultHost) resultHost.innerHTML = html;
-    setTimeout(() => refreshInfo(t, main, $('statusBar'), true), action === 'bulkRefresh' ? 1000 : 5000);
+    if (resultHost) {
+      resultHost.innerHTML = html;
+      resultHost.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+    if (action === 'batchRefresh') {
+      setTimeout(() => silentUpdateCurrentServer(t), 1000);
+    } else {
+      setTimeout(() => silentUpdateCurrentServer(t), 5000);
+    }
   });
+}
+
+// Silently refresh current server info without full page re-render
+async function silentUpdateCurrentServer(t) {
+  t = t || window.t;
+  const statusBar = $('statusBar');
+
+  try {
+    const [statusRes, infoRes] = await Promise.all([
+      sendMessage('getStatus'),
+      sendMessage('getInfo')
+    ]);
+
+    if (!infoRes.success) return;
+
+    const status = statusRes.success ? statusRes.data : {};
+    const info = infoRes.data;
+
+    const candidates = [
+      status.vmstat,
+      info.vmstat,
+      status.statusmsg,
+      info.statusmsg,
+      status.vmstate,
+      info.vmstate,
+      status.state,
+      info.state
+    ].filter(v => v && typeof v === 'string' && v.toLowerCase() !== 'success');
+
+    const isOnline = candidates.some(v => {
+      const lower = v.toLowerCase();
+      if (['offline', 'stopped', 'shutdown'].some(kw => lower.includes(kw)) || lower === 'down') return false;
+      return ['online', 'running', 'active', 'started', 'booted'].some(kw => lower.includes(kw));
+    }) || String(status.statusmsg || '').toLowerCase() === 'up';
+
+    // Detect transitional states (e.g. EC2: pending / stopping / shutting-down)
+    let transitionState = null;
+    const isTransitioning = !isOnline && candidates.some(val => {
+      const v = String(val).toLowerCase();
+      if (['pending', 'stopping', 'shutting', 'starting', 'rebooting', 'initializing'].some(kw => v.includes(kw))) {
+        transitionState = String(val);
+        return true;
+      }
+      return false;
+    });
+
+    // Update status badge
+    const statusBadge = document.querySelector('[data-field="status"]');
+    if (statusBadge) {
+      statusBadge.className = `status-badge ${isOnline ? 'online' : (isTransitioning ? 'transitioning' : 'offline')}`;
+      statusBadge.textContent = isOnline ? t('online') : (isTransitioning ? transitionState : t('offline'));
+    }
+
+    // Update action buttons based on online state
+    const actionsEl = document.querySelector('.actions');
+    if (actionsEl) {
+      const hostname = info.hostname || '';
+      const powerHtml = isTransitioning
+        ? `<button class="btn-transitioning" id="transitioningBtn" disabled>${lucideIcon('loader', 15)}${t('stateTransitioning', { state: escapeHtml(transitionState) })}</button>`
+        : isOnline
+        ? `<button class="btn-reboot" id="rebootBtn">${lucideIcon('reboot', 15)}${t('btnReboot')}</button>
+           <button class="btn-shutdown" id="shutdownBtn">${lucideIcon('power', 15)}${t('btnShutdown')}</button>`
+        : `<button class="btn-boot" id="bootBtn">${lucideIcon('play', 15)}${t('btnBoot')}</button>`;
+      actionsEl.innerHTML = `
+        <button class="btn-refresh" id="refreshBtn">${lucideIcon('refresh', 15)}${t('btnRefresh')}</button>
+        ${powerHtml}
+      `;
+      // Re-bind action events
+      $('refreshBtn').addEventListener('click', () => doAction('refresh', t('btnRefresh'), t, $('main')));
+      if (isTransitioning) {
+        // Keep polling until the state settles
+        setTimeout(() => silentUpdateCurrentServer(t), 8000);
+      } else if (isOnline) {
+        const rebootBtn = $('rebootBtn');
+        if (rebootBtn) rebootBtn.addEventListener('click', () => {
+          showInlineConfirm({
+            message: t('confirmReboot', { hostname }),
+            actionLabel: t('btnReboot'),
+            danger: false,
+            onConfirm: () => doAction('reboot', t('reboot'), t, $('main'))
+          });
+        });
+        const shutdownBtn = $('shutdownBtn');
+        if (shutdownBtn) shutdownBtn.addEventListener('click', () => {
+          showInlineConfirm({
+            message: t('confirmShutdown', { hostname }),
+            actionLabel: t('btnShutdown'),
+            danger: true,
+            onConfirm: () => doAction('shutdown', t('shutdown'), t, $('main'))
+          });
+        });
+      } else {
+        const bootBtn = $('bootBtn');
+        if (bootBtn) bootBtn.addEventListener('click', () => doAction('boot', t('boot'), t, $('main')));
+      }
+    }
+
+    // Update cache
+    safeStorageGet(['servers', 'currentServerId'], storageData => {
+      if (!storageData) return;
+      const currentId = storageData.currentServerId || (storageData.servers && storageData.servers[0] ? storageData.servers[0].id : null);
+      if (!currentId) return;
+      const cacheKey = 'cache_' + currentId;
+      const freshData = {
+        ...info,
+        status: status.status || info.status,
+        statusmsg: status.statusmsg || info.statusmsg,
+        vmstat: status.vmstat || info.vmstat,
+        vmstate: status.vmstate || info.vmstate,
+        state: status.state || info.state,
+        lastUpdated: new Date().toLocaleTimeString()
+      };
+      chrome.storage.local.set({ [cacheKey]: freshData });
+    });
+
+    // Update status bar
+    if (statusBar) {
+      statusBar.style.display = 'block';
+      statusBar.textContent = t('lastUpdated', { time: new Date().toLocaleTimeString() });
+    }
+
+    // Re-apply privacy mode
+    applyPrivacyMode();
+  } catch (e) {
+    console.error('silentUpdateCurrentServer error:', e);
+  }
 }

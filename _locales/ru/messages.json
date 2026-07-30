@@ -1,10 +1,10 @@
 {
   "appName": {
-    "message": "SolusVM VPS Панель управления",
+    "message": "VPS Dashboard — Multi-Provider VPS Manager",
     "description": "Название расширения"
   },
   "appDescription": {
-    "message": "Лёгкий, 100% приватный боковой монитор для SolusVM VPS. Просматривайте статус, перезагружайте и управляйте несколькими серверами в вашем браузере.",
+    "message": "Управляйте VPS-серверами на SolusVM, VirtFusion и AWS EC2 — просматривайте статус и ресурсы, управляйте несколькими серверами в браузере.",
     "description": "Описание расширения"
   }
 }
