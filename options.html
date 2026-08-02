@@ -162,6 +162,39 @@
     body.dark .toggle-vis { color: #6b7280; }
     body.dark .toggle-vis:hover { color: #8ab4ff; }
     .hint { font-size: 11px; color: #9ca3af; margin-top: 5px; line-height: 1.4; }
+    .provider-guide {
+      margin-top: 10px;
+      padding: 12px 14px;
+      border: 1px solid #dbeafe;
+      border-radius: 10px;
+      background: #f8fbff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+    }
+    .provider-guide-copy {
+      min-width: 0;
+    }
+    .provider-guide-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #1e3a8a;
+      margin-bottom: 3px;
+    }
+    .provider-guide-text {
+      font-size: 11px;
+      line-height: 1.45;
+      color: #64748b;
+    }
+    .provider-guide-link {
+      flex-shrink: 0;
+      font-size: 12px;
+      font-weight: 700;
+      color: #2563eb;
+      text-decoration: none;
+    }
+    .provider-guide-link:hover { color: #1d4ed8; text-decoration: underline; }
 
     .form-actions { display: flex; gap: 10px; margin-top: 26px; }
     button.btn-primary {
@@ -223,6 +256,10 @@
     body.dark .server-name, body.dark .form-title, body.dark label { color: #e6e9ef; }
     body.dark .server-host { color: #6f7887; }
     body.dark .hint, body.dark .config-tools-hint { color: #7d8694; }
+    body.dark .provider-guide { background: #172033; border-color: #263a5f; }
+    body.dark .provider-guide-title { color: #bfdbfe; }
+    body.dark .provider-guide-text { color: #94a3b8; }
+    body.dark .provider-guide-link { color: #8ab4ff; }
     body.dark .config-tools { border-top-color: #2e333d; }
     body.dark .config-tools-title { color: #d4d9e0; }
     body.dark .btn-add { background: #1d2f49; border-color: #3b82f6; color: #8ab4ff; }
@@ -329,6 +366,13 @@
           <option value="virtfusion">VirtFusion (experimental)</option>
         </select>
         <div id="i18n_hintPanelType" class="hint">Select the control panel this VPS uses (more types coming soon)</div>
+        <div class="provider-guide">
+          <div class="provider-guide-copy">
+            <div id="providerGuideTitle" class="provider-guide-title">Configuration guide</div>
+            <div id="providerGuideText" class="provider-guide-text">Open the setup guide for this provider.</div>
+          </div>
+          <a id="providerGuideLink" class="provider-guide-link" href="#" target="_blank" rel="noopener">View guide</a>
+        </div>
       </div>
       
       <div class="form-group">
