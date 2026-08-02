@@ -117,7 +117,13 @@ us-east-1/i-0123456789abcdef0
 
 Feedback
 
-If your provider returns a different API format or a panel does not work as expected, please use the built-in feedback link to open a pre-filled GitHub issue. Do not include API keys, API hashes, tokens, IP addresses, hostnames, or other sensitive information.
+The extension footer has three quick links:
+
+- **Request a provider** — opens a pre-filled GitHub issue to ask for a new VPS provider or control panel. Only the provider name is required; everything else is optional, so you can submit in seconds.
+- **Report a bug** — opens a pre-filled GitHub issue for bug reports. Extension version, language, and browser are auto-filled to save you typing.
+- **Contact developer** — opens your mail client to email the developer directly.
+
+Do not include API keys, API hashes, tokens, IP addresses, hostnames, or other sensitive information in public issues.
 ```
 
 **Category (类别)** [REQUIRED]

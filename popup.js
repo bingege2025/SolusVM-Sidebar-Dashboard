@@ -220,63 +220,93 @@ if (themeToggle) {
 
 // ---- Feedback section binding ----
 
-const GITHUB_ISSUES_URL = 'https://github.com/bingege2025/VPS-Sidebar-Dashboard/issues';
 const GITHUB_NEW_ISSUE_URL = 'https://github.com/bingege2025/VPS-Sidebar-Dashboard/issues/new';
-const FORUM_URL = 'https://lowendtalk.com/discussion/217453/idea-discussion-a-minimalist-chrome-sidepanel-dashboard-for-managing-multi-solusvm-racknerd-apis#latest';
 const DEV_EMAIL = 'renyanbin.wang@gmail.com';
 
-function buildIssueUrl() {
+// Pre-filled GitHub issue templates — minimize what the user has to type so they can submit in seconds.
+function buildIssueUrl(type) {
   const version = chrome.runtime.getManifest().version;
-  const title = '[Feedback] ';
-  const body = [
-    'What happened?',
-    '',
-    '',
-    'Provider / panel:',
-    '- Provider:',
-    'Panel type: (auto-detected)',
-    '',
-    'Extension:',
-    `- Version: ${version}`,
-    `- Language: ${window.currentLang || 'en'}`,
-    '',
-    'Please do not include API keys, API hashes, tokens, IP addresses, hostnames, or other sensitive information.'
-  ].join('\n');
+  const lang = window.currentLang || 'en';
+  const ua = navigator.userAgent;
+
+  let title, body;
+  if (type === 'provider') {
+    title = '[Provider Request] ';
+    body = [
+      'Thanks for helping improve VPS Dashboard! Just tell us which provider you would like — everything else is optional.',
+      '',
+      '**Which provider?**',
+      '- Provider / brand name: ',
+      '- Panel or API type (SolusVM, Virtualizor, custom, etc.): ',
+      '- Public API documentation URL (optional): ',
+      '',
+      '**Why do you need it?** (optional, one line is fine)',
+      '- ',
+      '',
+      '---',
+      `Extension Version: v${version}`,
+      `Language: ${lang}`,
+      '',
+      'Please do not include API keys, API hashes, tokens, IP addresses, or hostnames.'
+    ].join('\n');
+  } else { // 'bug'
+    title = '[Bug] ';
+    body = [
+      '**What happened?**',
+      '(steps to reproduce, if any)',
+      '',
+      '**Expected behavior**',
+      '- ',
+      '',
+      '**Actual behavior**',
+      '- ',
+      '',
+      '**Provider / panel**',
+      '- Provider: ',
+      '- Panel type: (auto-detected)',
+      '',
+      '---',
+      `Extension Version: v${version}`,
+      `Language: ${lang}`,
+      `Browser: ${ua}`,
+      '',
+      'Please do not include API keys, API hashes, tokens, IP addresses, or hostnames.'
+    ].join('\n');
+  }
 
   return `${GITHUB_NEW_ISSUE_URL}?title=${encodeURIComponent(title)}&body=${encodeURIComponent(body)}`;
 }
 
 function initFeedbackSection() {
   const t = window.t;
+  const feedbackProviderText = $('feedbackProviderText');
   const feedbackBugText = $('feedbackBugText');
-  const feedbackForumText = $('feedbackForumText');
   const feedbackEmailText = $('feedbackEmailText');
+  const feedbackProviderBtn = $('feedbackProviderBtn');
   const feedbackBugBtn = $('feedbackBugBtn');
-  const feedbackForumBtn = $('feedbackForumBtn');
   const feedbackEmailBtn = $('feedbackEmailBtn');
+  if (feedbackProviderText) feedbackProviderText.textContent = t('feedbackProvider');
   if (feedbackBugText) feedbackBugText.textContent = t('feedbackBug');
-  if (feedbackForumText) feedbackForumText.textContent = t('feedbackForum');
   if (feedbackEmailText) feedbackEmailText.textContent = t('feedbackEmail');
-  // 更新反馈链接的 title 属性
+  if (feedbackProviderBtn) feedbackProviderBtn.title = t('feedbackProviderTitle');
   if (feedbackBugBtn) feedbackBugBtn.title = t('feedbackBugTitle');
-  if (feedbackForumBtn) feedbackForumBtn.title = t('feedbackForumTitle');
   if (feedbackEmailBtn) feedbackEmailBtn.title = t('feedbackEmailTitle');
 }
 
-// 绑定反馈按钮点击事件
+// Bind feedback button clicks
+const feedbackProviderBtn = $('feedbackProviderBtn');
+if (feedbackProviderBtn) {
+  feedbackProviderBtn.addEventListener('click', e => {
+    e.preventDefault();
+    chrome.tabs.create({ url: buildIssueUrl('provider') });
+  });
+}
+
 const feedbackBugBtn = $('feedbackBugBtn');
 if (feedbackBugBtn) {
   feedbackBugBtn.addEventListener('click', e => {
     e.preventDefault();
-    chrome.tabs.create({ url: buildIssueUrl() });
-  });
-}
-
-const feedbackForumBtn = $('feedbackForumBtn');
-if (feedbackForumBtn) {
-  feedbackForumBtn.addEventListener('click', e => {
-    e.preventDefault();
-    chrome.tabs.create({ url: FORUM_URL });
+    chrome.tabs.create({ url: buildIssueUrl('bug') });
   });
 }
 
