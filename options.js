@@ -10,6 +10,13 @@ let darkModeEnabled = false;
 const CONFIG_EXPORT_VERSION = 1;
 
 const t = window.t;
+const LANDING_BASE_URL = 'http://23.238.8.144:8080';
+const PROVIDER_GUIDE_PATHS = {
+  solusvm: '/guides/solusvm-v1.html',
+  ec2: '/guides/aws-ec2.html',
+  solusvm2: '/guides/solusvm-v2.html',
+  virtfusion: '/guides/virtfusion.html'
+};
 
 // HTML escape to prevent XSS
 function escapeHtml(str) {
@@ -117,6 +124,20 @@ function applyTranslations() {
 
 function updatePanelHelp() {
   const panelType = $('panelType') ? $('panelType').value : 'solusvm';
+  const providerMeta = getProviderMeta(panelType);
+  const guidePath = PROVIDER_GUIDE_PATHS[panelType] || '/guides/';
+  const guideLink = $('providerGuideLink');
+  if ($('providerGuideTitle')) {
+    $('providerGuideTitle').textContent = t('providerGuideTitle', { provider: providerMeta.name });
+  }
+  if ($('providerGuideText')) {
+    $('providerGuideText').textContent = t('providerGuideText');
+  }
+  if (guideLink) {
+    guideLink.href = LANDING_BASE_URL + guidePath;
+    guideLink.textContent = t('providerGuideLink');
+  }
+
   if (panelType === 'lightsail' || panelType === 'ec2') {
     $('i18n_labelUrl').textContent = t('labelUrlLightsail');
     $('i18n_hintUrl').textContent = t('hintUrlLightsail');

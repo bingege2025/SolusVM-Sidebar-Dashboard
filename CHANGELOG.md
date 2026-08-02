@@ -2,6 +2,14 @@
 
 All notable changes to VPS Dashboard are documented here.
 
+## 1.5.1 - 2026-07-31
+
+### Added
+
+- Static landing page for Chrome Web Store and search traffic.
+- Provider-specific setup guides for SolusVM v1, AWS EC2, SolusVM v2, and VirtFusion.
+- Setup guide links in the extension settings page based on the selected panel type.
+
 ## 1.5.0 - 2026-07-25
 
 ### Added
