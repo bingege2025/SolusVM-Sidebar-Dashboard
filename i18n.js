@@ -139,7 +139,18 @@ window.i18nDict = {
     badgeDefault: "默认",
     tagDefault: "设为默认",
     copyTitle: "复制配置",
-    copiedSuffix: " (副本)"
+    copiedSuffix: " (副本)",
+    prefsTitle: "偏好设置",
+    labelWarnDays: "提前 N 天提醒到期",
+    hintWarnDays: "当服务器距到期不足该天数时显示提醒。",
+    labelExpiry: "到期日期",
+    hintExpiry: "设置该服务器或订阅的到期日，我们将在到期前提醒你。",
+    expiry: "到期时间",
+    expiryExpired: "⚠️ 已过期 {days} 天，请尽快续费",
+    expiryUrgent: "⚠️ 还有 {days} 天到期，请尽快续费",
+    expirySoon: "还有 {days} 天到期",
+    expired: "已过期",
+    daysLeft: "剩 {days} 天"
   },
   en: {
     // Popup keys
@@ -278,7 +289,18 @@ window.i18nDict = {
     badgeDefault: "Default",
     tagDefault: "Set as default",
     copyTitle: "Copy config",
-    copiedSuffix: " (Copy)"
+    copiedSuffix: " (Copy)",
+    prefsTitle: "Preferences",
+    labelWarnDays: "Remind me N days before expiry",
+    hintWarnDays: "Show a warning when a server is within this many days of expiry.",
+    labelExpiry: "Expiry Date",
+    hintExpiry: "Set the date this server or subscription expires. We'll warn you before it lapses.",
+    expiry: "Expires",
+    expiryExpired: "⚠️ Expired {days} days ago — renew now",
+    expiryUrgent: "⚠️ Expires in {days} days — renew soon",
+    expirySoon: "Expires in {days} days",
+    expired: "Expired",
+    daysLeft: "{days}d left"
   },
   de: {
     // Popup keys
@@ -417,7 +439,18 @@ window.i18nDict = {
     badgeDefault: "Standard",
     tagDefault: "Als Standard festlegen",
     copyTitle: "Konfiguration kopieren",
-    copiedSuffix: " (Kopie)"
+    copiedSuffix: " (Kopie)",
+    prefsTitle: "Einstellungen",
+    labelWarnDays: "N Tage vor Ablauf erinnern",
+    hintWarnDays: "Zeigt eine Warnung, wenn ein Server noch diese Anzahl Tage bis zum Ablauf hat.",
+    labelExpiry: "Ablaufdatum",
+    hintExpiry: "Legen Sie das Ablaufdatum dieses Servers bzw. Abonnements fest. Wir warnen Sie rechtzeitig.",
+    expiry: "Läuft ab",
+    expiryExpired: "⚠️ Vor {days} Tagen abgelaufen — jetzt verlängern",
+    expiryUrgent: "⚠️ Läuft in {days} Tagen ab — bald verlängern",
+    expirySoon: "Läuft in {days} Tagen ab",
+    expired: "Abgelaufen",
+    daysLeft: "noch {days} T"
   },
   fr: {
     // Popup keys
@@ -556,7 +589,18 @@ window.i18nDict = {
     badgeDefault: "Défaut",
     tagDefault: "Définir par défaut",
     copyTitle: "Copier la config",
-    copiedSuffix: " (Copie)"
+    copiedSuffix: " (Copie)",
+    prefsTitle: "Préférences",
+    labelWarnDays: "Me rappeler N jours avant l'expiration",
+    hintWarnDays: "Affiche un avertissement quand un serveur est à moins de ce nombre de jours de l'expiration.",
+    labelExpiry: "Date d'expiration",
+    hintExpiry: "Définissez la date d'expiration de ce serveur ou abonnement. Nous vous avertirons avant l'échéance.",
+    expiry: "Expiration",
+    expiryExpired: "⚠️ Expiré il y a {days} jours — renouvelez maintenant",
+    expiryUrgent: "⚠️ Expire dans {days} jours — renouvelez bientôt",
+    expirySoon: "Expire dans {days} jours",
+    expired: "Expiré",
+    daysLeft: "plus que {days} j"
   },
   ru: {
     // Popup keys
@@ -695,7 +739,18 @@ window.i18nDict = {
     badgeDefault: "По умолчанию",
     tagDefault: "Сделать по умолчанию",
     copyTitle: "Копировать конфиг",
-    copiedSuffix: " (Копия)"
+    copiedSuffix: " (Копия)",
+    prefsTitle: "Настройки",
+    labelWarnDays: "Напоминать за N дней до истечения",
+    hintWarnDays: "Показывать предупреждение, когда до истечения сервера остаётся указанное число дней.",
+    labelExpiry: "Дата истечения",
+    hintExpiry: "Укажите дату истечения этого сервера или подписки. Мы предупредим вас заранее.",
+    expiry: "Истекает",
+    expiryExpired: "⚠️ Истёк {days} дней назад — продлите сейчас",
+    expiryUrgent: "⚠️ Истекает через {days} дней — продлите скоро",
+    expirySoon: "Истекает через {days} дней",
+    expired: "Истёк",
+    daysLeft: "ост. {days} дн."
   }
 };
 

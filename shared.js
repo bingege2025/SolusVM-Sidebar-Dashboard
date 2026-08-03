@@ -28,8 +28,35 @@ function normalizeServers(list) {
     apiKey: (server.apiKey || '').trim(),
     apiHash: (server.apiHash || '').trim(),
     panel_type: server.panel_type || 'solusvm',
-    tags: normalizeTagList(server.tags)
+    tags: normalizeTagList(server.tags),
+    expiryDate: (server.expiryDate || '').trim()
   }));
+}
+
+// Default lead time (in days) before expiry at which a warning is shown.
+const DEFAULT_EXPIRY_WARN_DAYS = 7;
+
+// Compute days remaining until a server expires.
+// Accepts an ISO date string (YYYY-MM-DD) or any Date-parseable string.
+// Returns { date, daysLeft } or null when no valid date is set.
+function computeExpiry(expiryDate) {
+  if (!expiryDate || typeof expiryDate !== 'string') return null;
+  const exp = new Date(expiryDate + (expiryDate.length === 10 ? 'T00:00:00' : ''));
+  if (isNaN(exp.getTime())) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const diffDays = Math.round((exp.getTime() - today.getTime()) / 86400000);
+  return { date: expiryDate, daysLeft: diffDays };
+}
+
+// Map days remaining to an urgency level given a warning threshold.
+// Levels: 'expired' (< 0), 'urgent' (<= warnDays), 'soon' (<= warnDays*2), 'ok'.
+function expiryLevel(daysLeft, warnDays) {
+  const w = Number(warnDays) > 0 ? Number(warnDays) : DEFAULT_EXPIRY_WARN_DAYS;
+  if (daysLeft < 0) return 'expired';
+  if (daysLeft <= w) return 'urgent';
+  if (daysLeft <= w * 2) return 'soon';
+  return 'ok';
 }
 
 function getAllTagsFromServers(list) {
@@ -79,7 +106,8 @@ const LUCIDE = {
   copy: '<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
   star: '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>',
   trash: '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/>',
-  plus: '<path d="M5 12h14"/><path d="M12 5v14"/>'
+  plus: '<path d="M5 12h14"/><path d="M12 5v14"/>',
+  clock: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>'
 };
 
 function lucideIcon(name, size, filled) {

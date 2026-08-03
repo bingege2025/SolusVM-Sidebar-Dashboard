@@ -196,6 +196,17 @@
     }
     .provider-guide-link:hover { color: #1d4ed8; text-decoration: underline; }
 
+    .prefs-card {
+      margin-bottom: 24px; padding: 16px 18px;
+      border: 1px solid #e5e7eb; border-radius: 12px;
+      background: #f8fafc;
+    }
+    .prefs-title {
+      font-size: 13px; font-weight: 700; color: #374151; margin-bottom: 12px;
+    }
+    body.dark .prefs-card { background: #1e2229; border-color: #2e333d; }
+    body.dark .prefs-title { color: #d4d9e0; }
+
     .form-actions { display: flex; gap: 10px; margin-top: 26px; }
     button.btn-primary {
       padding: 11px 26px; background: linear-gradient(135deg, #3b82f6, #2563eb);
@@ -349,6 +360,16 @@
     
     <!-- Right Panel: Form Card -->
     <div class="right-panel card">
+      <!-- Global Preferences -->
+      <div class="prefs-card">
+        <div class="prefs-title" id="i18n_prefsTitle">Preferences</div>
+        <div class="form-group" style="margin-bottom: 0;">
+          <label id="i18n_labelWarnDays">Remind me N days before expiry</label>
+          <input type="number" id="expiryWarnDays" min="1" max="365" step="1" value="7">
+          <div id="i18n_hintWarnDays" class="hint">Show a warning when a server is within this many days of expiry.</div>
+        </div>
+      </div>
+
       <div id="formTitle" class="form-title">Add New Server</div>
       
       <div class="form-group">
@@ -411,6 +432,12 @@
         <label id="i18n_labelTags">Tags</label>
         <input type="text" id="serverTags" placeholder="RN, LA, Production">
         <div id="i18n_hintTags" class="hint">Separate tags with commas or spaces</div>
+      </div>
+
+      <div class="form-group">
+        <label id="i18n_labelExpiry">Expiry Date</label>
+        <input type="date" id="expiryDate">
+        <div id="i18n_hintExpiry" class="hint">Set the date this server or subscription expires. We'll warn you before it lapses.</div>
       </div>
 
       <div class="form-actions">

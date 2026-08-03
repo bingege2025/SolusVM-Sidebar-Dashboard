@@ -2,6 +2,16 @@
 
 All notable changes to VPS Dashboard are documented here.
 
+## 1.6.0 - 2026-08-03
+
+### Added
+
+- Expiry reminder for every panel type (SolusVM v1/v2, VirtFusion, Virtualizor, Proxmox, Hetzner, DigitalOcean, AWS EC2, AWS Lightsail).
+- Per-server expiry date field in settings; the extension computes days remaining and warns you before a server lapses.
+- Global "remind N days before expiry" preference (default 7 days).
+- In-popup reminder: a colored banner on the server detail view and an Expires row when a date is set; upcoming expirations also surface as chips in the batch list.
+- Expiry date and reminder threshold are included in config export/import.
+
 ## 1.5.1 - 2026-07-31
 
 ### Added

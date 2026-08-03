@@ -1606,7 +1606,13 @@ async function withActivePanel(handlerByPanel) {
   const config = await getActiveServerConfig();
   const panelType = getPanelType(config);
   const handler = handlerByPanel[panelType] || handlerByPanel.solusvm;
-  return await handler(config);
+  const server = await handler(config);
+  // Attach the user-set expiry (works for every panel type / framework)
+  if (server && typeof server === 'object') {
+    const exp = computeExpiry(config.expiryDate);
+    if (exp) server.expiry = exp;
+  }
+  return server;
 }
 
 // Parse SolusVM API response, compatible with both XML and key-value formats
@@ -1835,6 +1841,10 @@ async function batchRefresh(serverIds) {
     try {
       const panel = PANEL_HANDLERS[cfg.panel_type] || PANEL_HANDLERS.solusvm;
       const data = await panel.status(cfg);
+      if (data && typeof data === 'object') {
+        const exp = computeExpiry(cfg.expiryDate);
+        if (exp) data.expiry = exp;
+      }
       results.push({ name: cfg.name, success: true, data });
     } catch (e) {
       results.push({ name: cfg.name, success: false, error: e.message });

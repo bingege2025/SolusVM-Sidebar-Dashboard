@@ -4,6 +4,7 @@ const $ = id => document.getElementById(id);
 let privacyModeEnabled = false;
 let darkModeEnabled = false;
 let allServers = [];
+let expiryWarnDays = DEFAULT_EXPIRY_WARN_DAYS;
 
 // Global exception handlers
 window.onerror = function(message, source, lineno, colno, error) {
@@ -331,7 +332,7 @@ if (feedbackEmailBtn) {
   const t = window.t;
 
   // 将 lang 与其他数据一起读取，确保渲染前语言已就绪
-  safeStorageGet(['servers', 'currentServerId', 'defaultServerId', 'tags', 'privacyModeEnabled', 'darkModeEnabled', 'apiUrl', 'apiKey', 'apiHash', 'lang', 'recentServerIds'], data => {
+  safeStorageGet(['servers', 'currentServerId', 'defaultServerId', 'tags', 'privacyModeEnabled', 'darkModeEnabled', 'apiUrl', 'apiKey', 'apiHash', 'lang', 'recentServerIds', 'expiryWarnDays'], data => {
     if (!data) {
       // Storage timed out or errored — show retry prompt
       main.innerHTML = `
@@ -348,6 +349,9 @@ if (feedbackEmailBtn) {
     window.currentLang = data.lang || 'en';
     darkModeEnabled = Boolean(data.darkModeEnabled);
     applyTheme();
+    expiryWarnDays = (typeof data.expiryWarnDays === 'number' && data.expiryWarnDays > 0)
+      ? data.expiryWarnDays
+      : DEFAULT_EXPIRY_WARN_DAYS;
 
     // 更新所有静态 UI 文本
     if (settingsBtn) settingsBtn.title = t('settings');
@@ -694,8 +698,22 @@ function renderServerInfo(status, info, t, main) {
     return false;
   });
 
+  // ---- Expiry reminder ----
+  const expiry = info.expiry || null;
+  const expiryLvl = expiry ? expiryLevel(expiry.daysLeft, expiryWarnDays) : null;
+  let expiryBanner = '';
+  if (expiry && (expiryLvl === 'urgent' || expiryLvl === 'soon' || expiryLvl === 'expired')) {
+    const msg = expiryLvl === 'expired'
+      ? t('expiryExpired', { days: -expiry.daysLeft })
+      : (expiryLvl === 'urgent'
+        ? t('expiryUrgent', { days: expiry.daysLeft })
+        : t('expirySoon', { days: expiry.daysLeft }));
+    expiryBanner = `<div class="expiry-banner ${expiryLvl}">${lucideIcon('clock', 14)}<span>${escapeHtml(msg)}</span></div>`;
+  }
+
   main.innerHTML = `
     <div class="content" id="serverDetail">
+      ${expiryBanner}
       <div class="info-grid">
         <span class="label">${t('hostname')}</span>
         <span class="value privacy-field" data-field="hostname">${escapeHtml(info.hostname || '-')}</span>
@@ -711,6 +729,10 @@ function renderServerInfo(status, info, t, main) {
         <span class="value" data-field="hdd">${formatResource(info.hdd)}</span>
         <span class="label">${t('bw')}</span>
         <span class="value" data-field="bw">${formatResource(info.bw)}</span>
+        <span class="label">${t('expiry')}</span>
+        <span class="value">${expiry
+          ? `<span class="expiry-badge ${expiryLvl}">${escapeHtml(expiry.date)} · ${expiryLvl === 'expired' ? escapeHtml(t('expired')) : escapeHtml(t('daysLeft', { days: expiry.daysLeft }))}</span>`
+          : '—'}</span>
       </div>
       <div class="actions">
         <button class="btn-refresh" id="refreshBtn">${lucideIcon('refresh', 15)}${t('btnRefresh')}</button>
@@ -729,12 +751,19 @@ function renderServerInfo(status, info, t, main) {
           <button type="button" class="batch-toggle" id="batchSelectAllBtn">${t('selectAll')}</button>
         </div>
         <div class="batch-server-list" id="batchServerList">
-          ${allServers.map(s => `
+          ${allServers.map(s => {
+            const exp = computeExpiry(s.expiryDate);
+            const lvl = exp ? expiryLevel(exp.daysLeft, expiryWarnDays) : null;
+            const chip = (exp && (lvl === 'soon' || lvl === 'urgent' || lvl === 'expired'))
+              ? `<span class="expiry-chip ${lvl}" title="${escapeHtml(t('expiry'))}">${lvl === 'expired' ? escapeHtml(t('expired')) : escapeHtml(t('daysLeft', { days: exp.daysLeft }))}</span>`
+              : '';
+            return `
             <label class="batch-server-row">
               <input type="checkbox" class="batch-checkbox" value="${escapeHtml(s.id)}">
               <span class="batch-server-name">${escapeHtml(s.name)}</span>
-            </label>
-          `).join('')}
+              ${chip}
+            </label>`;
+          }).join('')}
         </div>
       </div>
       <div class="bulk-bar">

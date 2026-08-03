@@ -92,6 +92,11 @@ function applyTranslations() {
   $('i18n_hintHash').textContent = t('hintHash');
   $('i18n_labelTags').textContent = t('labelTags');
   $('i18n_hintTags').textContent = t('hintTags');
+  $('i18n_prefsTitle').textContent = t('prefsTitle');
+  $('i18n_labelWarnDays').textContent = t('labelWarnDays');
+  $('i18n_hintWarnDays').textContent = t('hintWarnDays');
+  $('i18n_labelExpiry').textContent = t('labelExpiry');
+  $('i18n_hintExpiry').textContent = t('hintExpiry');
   $('i18n_configToolsTitle').textContent = t('configToolsTitle');
   $('i18n_configToolsHint').textContent = t('configToolsHint');
   
@@ -266,6 +271,7 @@ function selectServer(id) {
     $('panelType').value = s.panel_type || 'solusvm';
     updatePanelHelp();
     $('serverTags').value = normalizeTagList(s.tags).join(', ');
+    $('expiryDate').value = s.expiryDate || '';
     
     document.querySelectorAll('.server-item').forEach(el => {
       el.classList.toggle('active', el.dataset.id === id);
@@ -288,6 +294,7 @@ function showNewForm() {
   $('panelType').value = 'solusvm';
   updatePanelHelp();
   $('serverTags').value = '';
+  $('expiryDate').value = '';
   
   document.querySelectorAll('.server-item').forEach(el => {
     el.classList.remove('active');
@@ -356,6 +363,9 @@ function loadConfig() {
       darkModeEnabled = Boolean(data.darkModeEnabled);
       applyTheme();
       $('languageSelect').value = window.currentLang;
+      $('expiryWarnDays').value = (typeof data.expiryWarnDays === 'number' && data.expiryWarnDays > 0)
+        ? data.expiryWarnDays
+        : DEFAULT_EXPIRY_WARN_DAYS;
       
       servers = normalized;
       defaultServerId = data.defaultServerId || null;
@@ -400,7 +410,8 @@ function saveServer() {
     apiKey,
     apiHash,
     panel_type: panelType,
-    tags: normalizeTagList($('serverTags').value)
+    tags: normalizeTagList($('serverTags').value),
+    expiryDate: $('expiryDate').value.trim()
   };
   
   try {
@@ -564,7 +575,8 @@ function exportConfig() {
     'tags',
     'lang',
     'darkModeEnabled',
-    'privacyModeEnabled'
+    'privacyModeEnabled',
+    'expiryWarnDays'
   ];
 
   chrome.storage.local.get(keys, data => {
@@ -585,7 +597,8 @@ function exportConfig() {
         tags: Array.isArray(data.tags) ? data.tags : [],
         lang: data.lang || window.currentLang || 'en',
         darkModeEnabled: Boolean(data.darkModeEnabled),
-        privacyModeEnabled: Boolean(data.privacyModeEnabled)
+        privacyModeEnabled: Boolean(data.privacyModeEnabled),
+        expiryWarnDays: Number(data.expiryWarnDays) || DEFAULT_EXPIRY_WARN_DAYS
       },
       warning: 'This file contains API credentials. Keep it private.'
     };
@@ -628,7 +641,8 @@ function normalizeImportedConfig(raw) {
     currentServerId,
     defaultServerId: nextDefaultServerId,
     tags: nextTags,
-    privacyModeEnabled: Boolean(config.privacyModeEnabled)
+    privacyModeEnabled: Boolean(config.privacyModeEnabled),
+    expiryWarnDays: Number(config.expiryWarnDays) || DEFAULT_EXPIRY_WARN_DAYS
   };
 }
 
@@ -665,6 +679,7 @@ function importConfigFile(file) {
           defaultServerId = nextConfig.defaultServerId;
           editingServerId = nextConfig.currentServerId;
           allTags = nextConfig.tags;
+          $('expiryWarnDays').value = nextConfig.expiryWarnDays;
           applyTranslations();
           selectServer(nextConfig.currentServerId);
           showMsg(t('msgImportOk', { count: nextConfig.servers.length }), true);
@@ -700,6 +715,14 @@ $('languageSelect').addEventListener('change', e => {
     applyTheme();
     showMsg(window.t('msgSaved'), true);
   });
+});
+
+// Persist global reminder lead time when changed
+$('expiryWarnDays').addEventListener('change', e => {
+  const v = parseInt(e.target.value, 10);
+  if (!isNaN(v) && v > 0) {
+    chrome.storage.local.set({ expiryWarnDays: v });
+  }
 });
 
 // Toggle password visibility for sensitive fields
