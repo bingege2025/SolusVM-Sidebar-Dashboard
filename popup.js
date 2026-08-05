@@ -322,6 +322,48 @@ if (feedbackEmailBtn) {
   });
 }
 
+// ---- Expiry calendar export ----
+
+function popupToast(msg) {
+  let el = $('popupToast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'popupToast';
+    el.style.cssText = 'position:fixed;left:50%;bottom:14px;transform:translateX(-50%);background:#111827;color:#fff;padding:8px 14px;border-radius:9px;font-size:12px;font-weight:600;z-index:999;box-shadow:0 6px 20px rgba(0,0,0,.25);opacity:0;transition:opacity .2s ease;pointer-events:none;';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.style.opacity = '1';
+  clearTimeout(el._timer);
+  el._timer = setTimeout(() => { el.style.opacity = '0'; }, 2200);
+}
+
+function exportCurrentServerICS(t) {
+  safeStorageGet(['servers', 'currentServerId', 'expiryThresholds'], data => {
+    const servers = data.servers || [];
+    const id = data.currentServerId || (servers[0] && servers[0].id);
+    const s = servers.find(x => x.id === id);
+    if (!s || !s.expiryDate) {
+      popupToast(t('icsNoExpiry'));
+      return;
+    }
+    const thresholds = (Array.isArray(data.expiryThresholds) && data.expiryThresholds.length)
+      ? data.expiryThresholds
+      : DEFAULT_EXPIRY_THRESHOLDS.slice();
+    const meta = getProviderMeta(s.panel_type);
+    const ics = buildICS([{
+      id: s.id,
+      name: s.name,
+      providerName: meta ? meta.name : '',
+      url: s.apiUrl,
+      expiryDate: s.expiryDate,
+      expirySource: s.expirySource
+    }], { thresholds });
+    downloadICS(`vps-expiry-${(s.name || 'server').replace(/[^\w\-]+/g, '_')}.ics`, ics);
+    popupToast(t('icsExported'));
+  });
+}
+
 // ---- Main initialization (fully synchronous, no await) ----
 
 (function init() {
@@ -332,7 +374,7 @@ if (feedbackEmailBtn) {
   const t = window.t;
 
   // 将 lang 与其他数据一起读取，确保渲染前语言已就绪
-  safeStorageGet(['servers', 'currentServerId', 'defaultServerId', 'tags', 'privacyModeEnabled', 'darkModeEnabled', 'apiUrl', 'apiKey', 'apiHash', 'lang', 'recentServerIds', 'expiryWarnDays'], data => {
+  safeStorageGet(['servers', 'currentServerId', 'defaultServerId', 'tags', 'privacyModeEnabled', 'darkModeEnabled', 'apiUrl', 'apiKey', 'apiHash', 'lang', 'recentServerIds', 'expiryThresholds'], data => {
     if (!data) {
       // Storage timed out or errored — show retry prompt
       main.innerHTML = `
@@ -349,9 +391,10 @@ if (feedbackEmailBtn) {
     window.currentLang = data.lang || 'en';
     darkModeEnabled = Boolean(data.darkModeEnabled);
     applyTheme();
-    expiryWarnDays = (typeof data.expiryWarnDays === 'number' && data.expiryWarnDays > 0)
-      ? data.expiryWarnDays
-      : DEFAULT_EXPIRY_WARN_DAYS;
+    const _thresholds = (Array.isArray(data.expiryThresholds) && data.expiryThresholds.length)
+      ? data.expiryThresholds.map(Number).filter(n => n > 0)
+      : DEFAULT_EXPIRY_THRESHOLDS.slice();
+    expiryWarnDays = _thresholds.length ? Math.min.apply(null, _thresholds) : DEFAULT_EXPIRY_WARN_DAYS;
 
     // 更新所有静态 UI 文本
     if (settingsBtn) settingsBtn.title = t('settings');
@@ -731,11 +774,12 @@ function renderServerInfo(status, info, t, main) {
         <span class="value" data-field="bw">${formatResource(info.bw)}</span>
         <span class="label">${t('expiry')}</span>
         <span class="value">${expiry
-          ? `<span class="expiry-badge ${expiryLvl}">${escapeHtml(expiry.date)} · ${expiryLvl === 'expired' ? escapeHtml(t('expired')) : escapeHtml(t('daysLeft', { days: expiry.daysLeft }))}</span>`
+          ? `<span class="expiry-badge ${expiryLvl}">${escapeHtml(expiry.date)} · ${expiryLvl === 'expired' ? escapeHtml(t('expired')) : escapeHtml(t('daysLeft', { days: expiry.daysLeft }))}</span>${info.expirySource === 'api' ? `<span class="expiry-source-tag" title="${escapeHtml(t('expiryApiTagHint'))}">API</span>` : ''}`
           : '—'}</span>
       </div>
       <div class="actions">
         <button class="btn-refresh" id="refreshBtn">${lucideIcon('refresh', 15)}${t('btnRefresh')}</button>
+        <button class="btn-ics" id="exportIcsBtn" title="${escapeHtml(t('btnExportIcs'))}">${lucideIcon('calendar', 15)}${escapeHtml(t('btnExportIcs'))}</button>
         ${isTransitioning
           ? `<button class="btn-transitioning" id="transitioningBtn" disabled>${lucideIcon('loader', 15)}${t('stateTransitioning', { state: escapeHtml(transitionState) })}</button>`
           : isOnline
@@ -779,6 +823,8 @@ function renderServerInfo(status, info, t, main) {
   const hostname = info.hostname || '-';
 
   $('refreshBtn').addEventListener('click', () => doAction('refresh', t('btnRefresh'), t, main));
+  const exportIcsBtn = $('exportIcsBtn');
+  if (exportIcsBtn) exportIcsBtn.addEventListener('click', () => exportCurrentServerICS(t));
   if (isTransitioning) {
     // No power actions while transitioning — auto refresh to pick up the settled state
     setTimeout(() => silentUpdateCurrentServer(t), 8000);
@@ -1009,10 +1055,13 @@ async function silentUpdateCurrentServer(t) {
         : `<button class="btn-boot" id="bootBtn">${lucideIcon('play', 15)}${t('btnBoot')}</button>`;
       actionsEl.innerHTML = `
         <button class="btn-refresh" id="refreshBtn">${lucideIcon('refresh', 15)}${t('btnRefresh')}</button>
+        <button class="btn-ics" id="exportIcsBtn" title="${escapeHtml(t('btnExportIcs'))}">${lucideIcon('calendar', 15)}${escapeHtml(t('btnExportIcs'))}</button>
         ${powerHtml}
       `;
       // Re-bind action events
       $('refreshBtn').addEventListener('click', () => doAction('refresh', t('btnRefresh'), t, $('main')));
+      const exportIcsBtn2 = $('exportIcsBtn');
+      if (exportIcsBtn2) exportIcsBtn2.addEventListener('click', () => exportCurrentServerICS(t));
       if (isTransitioning) {
         // Keep polling until the state settles
         setTimeout(() => silentUpdateCurrentServer(t), 8000);

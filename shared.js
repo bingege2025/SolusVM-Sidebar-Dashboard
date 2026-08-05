@@ -29,12 +29,22 @@ function normalizeServers(list) {
     apiHash: (server.apiHash || '').trim(),
     panel_type: server.panel_type || 'solusvm',
     tags: normalizeTagList(server.tags),
-    expiryDate: (server.expiryDate || '').trim()
+    expiryDate: (server.expiryDate || '').trim(),
+    // Expiry provenance: 'api' = pulled from provider API, 'manual' = user-entered,
+    // 'none' = not set. When 'manual', the background must never overwrite from API.
+    expirySource: server.expirySource === 'api' || server.expirySource === 'manual'
+      ? server.expirySource
+      : (server.expiryDate ? 'manual' : 'none'),
+    // Per-server opt-out of the background reminder notifications.
+    expiryDisabled: Boolean(server.expiryDisabled)
   }));
 }
 
 // Default lead time (in days) before expiry at which a warning is shown.
 const DEFAULT_EXPIRY_WARN_DAYS = 7;
+
+// Default multi-threshold reminder windows (days before expiry).
+const DEFAULT_EXPIRY_THRESHOLDS = [3, 7, 30];
 
 // Compute days remaining until a server expires.
 // Accepts an ISO date string (YYYY-MM-DD) or any Date-parseable string.
@@ -57,6 +67,60 @@ function expiryLevel(daysLeft, warnDays) {
   if (daysLeft <= w) return 'urgent';
   if (daysLeft <= w * 2) return 'soon';
   return 'ok';
+}
+
+// Tolerant extraction of an expiry date from a provider API response.
+// Many panels expose a billing/expiry field under various names; this scans
+// object keys (case-insensitive) for known patterns and tries to parse the
+// value as a date. Returns an ISO 'YYYY-MM-DD' string or null.
+const EXPIRY_KEY_RE = /(next_?due_?date|due_?date|next_?invoice|invoice_?due|expir(y|es)_?at|expiry_?date|renew_?at|next_?renew|paid_?until|billing_?cycle_?end|valid_?until|end_?date|termination_?date|suspend_?date|expire_?at)/i;
+
+function isoDateOnly(d) {
+  return d.toISOString().slice(0, 10);
+}
+
+function parseFlexibleDate(value) {
+  if (value === null || value === undefined || value === '') return null;
+  // Unix timestamp (seconds or milliseconds)
+  if (typeof value === 'number') {
+    const ms = value > 1e12 ? value : (value > 1e9 ? value * 1000 : 0);
+    if (!ms) return null;
+    const d = new Date(ms);
+    if (isNaN(d.getTime())) return null;
+    return isoDateOnly(d);
+  }
+  if (typeof value !== 'string') return null;
+  const s = value.trim();
+  if (!s) return null;
+  const d = new Date(s.replace(' ', 'T'));
+  if (isNaN(d.getTime())) return null;
+  const year = d.getUTCFullYear();
+  // Reject implausible years to avoid false positives (e.g. random numbers).
+  if (year < 2000 || year > 2100) return null;
+  return isoDateOnly(d);
+}
+
+function extractApiExpiry(obj, _depth) {
+  if (!obj || typeof obj !== 'object') return null;
+  const depth = _depth || 0;
+  if (depth > 4) return null;
+  // 1) Scan own keys for known date field names
+  const keys = Object.keys(obj);
+  for (const key of keys) {
+    if (EXPIRY_KEY_RE.test(key)) {
+      const found = parseFlexibleDate(obj[key]);
+      if (found) return found;
+    }
+  }
+  // 2) Recurse one level deeper into nested objects/arrays
+  for (const key of keys) {
+    const val = obj[key];
+    if (val && typeof val === 'object') {
+      const found = extractApiExpiry(val, depth + 1);
+      if (found) return found;
+    }
+  }
+  return null;
 }
 
 function getAllTagsFromServers(list) {

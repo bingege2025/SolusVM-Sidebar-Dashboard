@@ -10,7 +10,7 @@ let darkModeEnabled = false;
 const CONFIG_EXPORT_VERSION = 1;
 
 const t = window.t;
-const LANDING_BASE_URL = 'http://23.238.8.144:8080';
+const LANDING_BASE_URL = 'https://a.meng.mom';
 const PROVIDER_GUIDE_PATHS = {
   solusvm: '/guides/solusvm-v1.html',
   ec2: '/guides/aws-ec2.html',
@@ -93,8 +93,14 @@ function applyTranslations() {
   $('i18n_labelTags').textContent = t('labelTags');
   $('i18n_hintTags').textContent = t('hintTags');
   $('i18n_prefsTitle').textContent = t('prefsTitle');
-  $('i18n_labelWarnDays').textContent = t('labelWarnDays');
-  $('i18n_hintWarnDays').textContent = t('hintWarnDays');
+  $('i18n_labelReminders').textContent = t('labelReminders');
+  $('i18n_hintReminders').textContent = t('hintReminders');
+  $('i18n_labelThresholds').textContent = t('labelThresholds');
+  $('i18n_hintThresholds').textContent = t('hintThresholds');
+  $('i18n_expiryApiNote').textContent = t('expiryApiNote');
+  $('i18n_labelExpiryDisabled').textContent = t('labelExpiryDisabled');
+  $('testReminderBtn').textContent = t('btnTestReminder');
+  $('exportIcsBtn').textContent = t('btnExportIcs');
   $('i18n_labelExpiry').textContent = t('labelExpiry');
   $('i18n_hintExpiry').textContent = t('hintExpiry');
   $('i18n_configToolsTitle').textContent = t('configToolsTitle');
@@ -130,8 +136,15 @@ function applyTranslations() {
 function updatePanelHelp() {
   const panelType = $('panelType') ? $('panelType').value : 'solusvm';
   const providerMeta = getProviderMeta(panelType);
-  const guidePath = PROVIDER_GUIDE_PATHS[panelType] || '/guides/';
+  const guidePath = PROVIDER_GUIDE_PATHS[panelType];
+  const guideWrap = document.querySelector('.provider-guide');
   const guideLink = $('providerGuideLink');
+  // Hide the callout when this provider has no setup guide yet.
+  if (!guidePath) {
+    if (guideWrap) guideWrap.style.display = 'none';
+    return;
+  }
+  if (guideWrap) guideWrap.style.display = '';
   if ($('providerGuideTitle')) {
     $('providerGuideTitle').textContent = t('providerGuideTitle', { provider: providerMeta.name });
   }
@@ -272,6 +285,9 @@ function selectServer(id) {
     updatePanelHelp();
     $('serverTags').value = normalizeTagList(s.tags).join(', ');
     $('expiryDate').value = s.expiryDate || '';
+    $('expiryDisabled').checked = !!s.expiryDisabled;
+    const apiNote = $('expiryApiNote');
+    if (apiNote) apiNote.style.display = (s.expirySource === 'api') ? 'flex' : 'none';
     
     document.querySelectorAll('.server-item').forEach(el => {
       el.classList.toggle('active', el.dataset.id === id);
@@ -295,6 +311,9 @@ function showNewForm() {
   updatePanelHelp();
   $('serverTags').value = '';
   $('expiryDate').value = '';
+  $('expiryDisabled').checked = false;
+  const apiNote = $('expiryApiNote');
+  if (apiNote) apiNote.style.display = 'none';
   
   document.querySelectorAll('.server-item').forEach(el => {
     el.classList.remove('active');
@@ -363,10 +382,17 @@ function loadConfig() {
       darkModeEnabled = Boolean(data.darkModeEnabled);
       applyTheme();
       $('languageSelect').value = window.currentLang;
-      $('expiryWarnDays').value = (typeof data.expiryWarnDays === 'number' && data.expiryWarnDays > 0)
-        ? data.expiryWarnDays
-        : DEFAULT_EXPIRY_WARN_DAYS;
-      
+
+      // Reminder preferences
+      const remindersEnabled = data.remindersEnabled !== false;
+      $('remindersEnabled').checked = remindersEnabled;
+      const thresholds = (Array.isArray(data.expiryThresholds) && data.expiryThresholds.length)
+        ? data.expiryThresholds.map(Number).filter(n => n > 0)
+        : DEFAULT_EXPIRY_THRESHOLDS.slice();
+      document.querySelectorAll('.threshold-cb').forEach(cb => {
+        cb.checked = thresholds.indexOf(Number(cb.value)) !== -1;
+      });
+
       servers = normalized;
       defaultServerId = data.defaultServerId || null;
       
@@ -404,6 +430,19 @@ function saveServer() {
   
   let cleanedUrl = apiUrl.replace(/\/$/, '');
   
+  const rawExpiry = $('expiryDate').value.trim();
+  // Decide expiry provenance: a manual edit always wins; an untouched API
+  // value keeps its 'api' source so the background keeps syncing from the API.
+  let expirySource;
+  const prev = servers.find(item => item.id === editingServerId);
+  if (prev && prev.expirySource === 'api' && (prev.expiryDate || '') === rawExpiry) {
+    expirySource = 'api';
+  } else if (rawExpiry) {
+    expirySource = 'manual';
+  } else {
+    expirySource = 'none';
+  }
+
   const config = {
     name,
     apiUrl: cleanedUrl,
@@ -411,7 +450,9 @@ function saveServer() {
     apiHash,
     panel_type: panelType,
     tags: normalizeTagList($('serverTags').value),
-    expiryDate: $('expiryDate').value.trim()
+    expiryDate: rawExpiry,
+    expirySource,
+    expiryDisabled: $('expiryDisabled').checked
   };
   
   try {
@@ -616,6 +657,40 @@ function exportConfig() {
   });
 }
 
+function enrichServerForICS(s) {
+  const meta = getProviderMeta(s.panel_type);
+  return {
+    id: s.id,
+    name: s.name,
+    providerName: meta ? meta.name : '',
+    url: s.apiUrl,
+    expiryDate: s.expiryDate,
+    expirySource: s.expirySource
+  };
+}
+
+function exportAllICS() {
+  chrome.storage.local.get(['servers', 'expiryThresholds'], data => {
+    if (chrome.runtime.lastError) {
+      showMsg(t('msgExportFail', { error: chrome.runtime.lastError.message }), false);
+      return;
+    }
+    const servers = normalizeServers(data.servers || []);
+    const thresholds = (Array.isArray(data.expiryThresholds) && data.expiryThresholds.length)
+      ? data.expiryThresholds
+      : DEFAULT_EXPIRY_THRESHOLDS.slice();
+    const withExpiry = servers.filter(s => s.expiryDate);
+    if (withExpiry.length === 0) {
+      showMsg(t('msgNoExpiry'), true);
+      return;
+    }
+    const ics = buildICS(withExpiry.map(enrichServerForICS), { thresholds });
+    const date = new Date().toISOString().slice(0, 10);
+    downloadICS(`vps-dashboard-expiry-${date}.ics`, ics);
+    showMsg(t('msgExportIcsOk', { count: withExpiry.length }), true);
+  });
+}
+
 function normalizeImportedConfig(raw) {
   const config = raw && raw.config ? raw.config : raw;
   if (!config || typeof config !== 'object') {
@@ -679,7 +754,15 @@ function importConfigFile(file) {
           defaultServerId = nextConfig.defaultServerId;
           editingServerId = nextConfig.currentServerId;
           allTags = nextConfig.tags;
-          $('expiryWarnDays').value = nextConfig.expiryWarnDays;
+          // Refresh threshold checkboxes from storage (global prefs are not part of config export)
+          chrome.storage.local.get(['expiryThresholds'], stored => {
+            const thresholds = (Array.isArray(stored.expiryThresholds) && stored.expiryThresholds.length)
+              ? stored.expiryThresholds.map(Number).filter(n => n > 0)
+              : DEFAULT_EXPIRY_THRESHOLDS.slice();
+            document.querySelectorAll('.threshold-cb').forEach(cb => {
+              cb.checked = thresholds.indexOf(Number(cb.value)) !== -1;
+            });
+          });
           applyTranslations();
           selectServer(nextConfig.currentServerId);
           showMsg(t('msgImportOk', { count: nextConfig.servers.length }), true);
@@ -717,13 +800,36 @@ $('languageSelect').addEventListener('change', e => {
   });
 });
 
-// Persist global reminder lead time when changed
-$('expiryWarnDays').addEventListener('change', e => {
-  const v = parseInt(e.target.value, 10);
-  if (!isNaN(v) && v > 0) {
-    chrome.storage.local.set({ expiryWarnDays: v });
-  }
+// Persist master reminder switch
+$('remindersEnabled').addEventListener('change', e => {
+  chrome.storage.local.set({ remindersEnabled: !!e.target.checked });
 });
+
+// Persist multi-threshold reminder windows
+document.querySelectorAll('.threshold-cb').forEach(cb => {
+  cb.addEventListener('change', () => {
+    const selected = Array.from(document.querySelectorAll('.threshold-cb'))
+      .filter(c => c.checked)
+      .map(c => Number(c.value))
+      .sort((a, b) => a - b);
+    chrome.storage.local.set({ expiryThresholds: selected });
+  });
+});
+
+// Send a test notification (verifies the permission + UX)
+$('testReminderBtn').addEventListener('click', () => {
+  chrome.runtime.sendMessage({ action: 'testReminder' }, resp => {
+    if (chrome.runtime.lastError) {
+      showMsg(t('msgTestReminderFail', { error: chrome.runtime.lastError.message }), false);
+      return;
+    }
+    if (resp && resp.success) showMsg(t('msgTestReminderOk'), true);
+    else showMsg(t('msgTestReminderFail', { error: (resp && resp.error) || t('apiTimeout') }), false);
+  });
+});
+
+// Export all servers' expiry dates as a calendar (.ics)
+$('exportIcsBtn').addEventListener('click', exportAllICS);
 
 // Toggle password visibility for sensitive fields
 document.addEventListener('click', e => {

@@ -2,15 +2,28 @@
 
 All notable changes to VPS Dashboard are documented here.
 
-## 1.6.0 - 2026-08-03
+## 1.6.0 - 2026-08-04
 
 ### Added
 
 - Expiry reminder for every panel type (SolusVM v1/v2, VirtFusion, Virtualizor, Proxmox, Hetzner, DigitalOcean, AWS EC2, AWS Lightsail).
 - Per-server expiry date field in settings; the extension computes days remaining and warns you before a server lapses.
-- Global "remind N days before expiry" preference (default 7 days).
+- Background expiry reminders via `chrome.alarms` (check every 6 hours) + `chrome.notifications`.
+- Multi-threshold reminders: notify at 30 / 7 / 3 days before expiry; expired servers remind once per day.
+- API-pulled expiry: when a provider API returns a billing/expiry date (SolusVM v2, VirtFusion, and others), it is automatically pulled and stored; manual entry always wins and can override API values. A note warns that API dates may be inaccurate and should be verified.
+- Per-server reminder opt-out toggle in settings.
+- Global master switch for expiry reminders.
+- Calendar export: download a `.ics` file (RFC 5545) for a single server or all servers, with built-in `VALARM` reminders at each threshold — importable into Google Calendar, Apple Calendar, Outlook, etc.
 - In-popup reminder: a colored banner on the server detail view and an Expires row when a date is set; upcoming expirations also surface as chips in the batch list.
 - Expiry date and reminder threshold are included in config export/import.
+
+### Changed
+
+- Expiry preference is now multi-threshold (`expiryThresholds`, default `[3, 7, 30]`) instead of a single `expiryWarnDays` value.
+
+### Notes
+
+- API-expiry extraction is best-effort and provider-dependent; not all panels expose a billing date. When in doubt, set the date manually.
 
 ## 1.5.1 - 2026-07-31
 

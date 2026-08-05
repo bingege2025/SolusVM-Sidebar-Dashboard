@@ -18,6 +18,8 @@ zip -r "$OUTPUT" \
   background.js \
   i18n.js \
   shared.js \
+  ics-generator.js \
+  expiry-reminder.js \
   popup.html popup.js \
   options.html options.js \
   icons \

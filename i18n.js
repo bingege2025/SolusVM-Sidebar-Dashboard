@@ -150,7 +150,22 @@ window.i18nDict = {
     expiryUrgent: "⚠️ 还有 {days} 天到期，请尽快续费",
     expirySoon: "还有 {days} 天到期",
     expired: "已过期",
-    daysLeft: "剩 {days} 天"
+    daysLeft: "剩 {days} 天",
+    labelReminders: "到期提醒",
+    hintReminders: "服务器到期前发送桌面通知。",
+    labelThresholds: "提前提醒（到期前天数）",
+    hintThresholds: "可选择一个或多个时间窗口；已过期服务器每天提醒一次。",
+    expiryApiNote: "已从服务商 API 拉取——不保证准确，请人工核对。",
+    labelExpiryDisabled: "关闭该服务器的到期提醒",
+    expiryApiTagHint: "日期来自服务商 API——请人工核对准确性。",
+    btnTestReminder: "发送测试通知",
+    btnExportIcs: "导出 .ics",
+    msgTestReminderOk: "测试通知已发送。",
+    msgTestReminderFail: "无法发送测试通知：{error}",
+    msgNoExpiry: "没有设置到期日期的服务器。",
+    msgExportIcsOk: "已导出 {count} 个服务器到日历文件。",
+    icsNoExpiry: "该服务器未设置到期日期。",
+    icsExported: "日历文件已导出。"
   },
   en: {
     // Popup keys
@@ -300,7 +315,22 @@ window.i18nDict = {
     expiryUrgent: "⚠️ Expires in {days} days — renew soon",
     expirySoon: "Expires in {days} days",
     expired: "Expired",
-    daysLeft: "{days}d left"
+    daysLeft: "{days}d left",
+    labelReminders: "Expiry reminders",
+    hintReminders: "Send desktop notifications before a server expires.",
+    labelThresholds: "Remind me at (days before expiry)",
+    hintThresholds: "Pick one or more windows. Expired servers remind you once per day.",
+    expiryApiNote: "Pulled from the provider API — not guaranteed accurate, please verify manually.",
+    labelExpiryDisabled: "Disable reminders for this server",
+    expiryApiTagHint: "Date pulled from the provider API — verify accuracy manually.",
+    btnTestReminder: "Send test notification",
+    btnExportIcs: "Export .ics",
+    msgTestReminderOk: "Test notification sent.",
+    msgTestReminderFail: "Could not send test notification: {error}",
+    msgNoExpiry: "No servers have an expiry date set.",
+    msgExportIcsOk: "Exported {count} server(s) to calendar file.",
+    icsNoExpiry: "No expiry date set for this server.",
+    icsExported: "Calendar file exported."
   },
   de: {
     // Popup keys
@@ -450,7 +480,22 @@ window.i18nDict = {
     expiryUrgent: "⚠️ Läuft in {days} Tagen ab — bald verlängern",
     expirySoon: "Läuft in {days} Tagen ab",
     expired: "Abgelaufen",
-    daysLeft: "noch {days} T"
+    daysLeft: "noch {days} T",
+    labelReminders: "Ablauf-Erinnerungen",
+    hintReminders: "Desktop-Benachrichtigungen senden, bevor ein Server abläuft.",
+    labelThresholds: "Erinnern (Tage vor Ablauf)",
+    hintThresholds: "Wähle ein oder mehrere Fenster. Abgelaufene Server erinnern täglich.",
+    expiryApiNote: "Aus der Provider-API gezogen — nicht garantiert korrekt, bitte prüfen.",
+    labelExpiryDisabled: "Erinnerungen für diesen Server deaktivieren",
+    expiryApiTagHint: "Datum aus der Provider-API — bitte manuell prüfen.",
+    btnTestReminder: "Test-Benachrichtigung senden",
+    btnExportIcs: ".ics exportieren",
+    msgTestReminderOk: "Test-Benachrichtigung gesendet.",
+    msgTestReminderFail: "Test-Benachrichtigung fehlgeschlagen: {error}",
+    msgNoExpiry: "Kein Server hat ein Ablaufdatum gesetzt.",
+    msgExportIcsOk: "{count} Server in Kalenderdatei exportiert.",
+    icsNoExpiry: "Für diesen Server ist kein Ablaufdatum gesetzt.",
+    icsExported: "Kalenderdatei exportiert."
   },
   fr: {
     // Popup keys
@@ -600,7 +645,22 @@ window.i18nDict = {
     expiryUrgent: "⚠️ Expire dans {days} jours — renouvelez bientôt",
     expirySoon: "Expire dans {days} jours",
     expired: "Expiré",
-    daysLeft: "plus que {days} j"
+    daysLeft: "plus que {days} j",
+    labelReminders: "Rappels d'expiration",
+    hintReminders: "Envoyer des notifications avant l'expiration d'un serveur.",
+    labelThresholds: "Rappeler (jours avant expiration)",
+    hintThresholds: "Choisissez une ou plusieurs fenêtres. Les serveurs expirés rappellent chaque jour.",
+    expiryApiNote: "Récupéré depuis l'API du fournisseur — exactitude non garantie, veuillez vérifier.",
+    labelExpiryDisabled: "Désactiver les rappels pour ce serveur",
+    expiryApiTagHint: "Date issue de l'API du fournisseur — vérifiez manuellement.",
+    btnTestReminder: "Envoyer une notification test",
+    btnExportIcs: "Exporter .ics",
+    msgTestReminderOk: "Notification test envoyée.",
+    msgTestReminderFail: "Impossible d'envoyer la notification test : {error}",
+    msgNoExpiry: "Aucun serveur n'a de date d'expiration définie.",
+    msgExportIcsOk: "{count} serveur(s) exporté(s) vers le fichier calendrier.",
+    icsNoExpiry: "Aucune date d'expiration définie pour ce serveur.",
+    icsExported: "Fichier calendrier exporté."
   },
   ru: {
     // Popup keys
@@ -750,7 +810,22 @@ window.i18nDict = {
     expiryUrgent: "⚠️ Истекает через {days} дней — продлите скоро",
     expirySoon: "Истекает через {days} дней",
     expired: "Истёк",
-    daysLeft: "ост. {days} дн."
+    daysLeft: "ост. {days} дн.",
+    labelReminders: "Напоминания об истечении",
+    hintReminders: "Отправлять уведомления перед истечением срока сервера.",
+    labelThresholds: "Напоминать (дней до истечения)",
+    hintThresholds: "Выберите одно или несколько окон. Истёкшие серверы напоминают ежедневно.",
+    expiryApiNote: "Получено из API провайдера — точность не гарантируется, проверьте вручную.",
+    labelExpiryDisabled: "Отключить напоминания для этого сервера",
+    expiryApiTagHint: "Дата получена из API провайдера — проверьте вручную.",
+    btnTestReminder: "Отправить тестовое уведомление",
+    btnExportIcs: "Экспорт .ics",
+    msgTestReminderOk: "Тестовое уведомление отправлено.",
+    msgTestReminderFail: "Не удалось отправить тестовое уведомление: {error}",
+    msgNoExpiry: "Ни у одного сервера не задана дата истечения.",
+    msgExportIcsOk: "Экспортировано серверов: {count} в файл календаря.",
+    icsNoExpiry: "Для этого сервера не задана дата истечения.",
+    icsExported: "Файл календаря экспортирован."
   }
 };
 

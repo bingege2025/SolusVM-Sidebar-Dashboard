@@ -7,3 +7,10 @@ dist/
 *.zip
 .workbuddy/
 vps-dashboard-v*/
+
+# Landing page kept private (not open-sourced)
+landing/
+deploy/
+
+# Non-code drafts / working files (not committed)
+v1.6.0-announcement.md

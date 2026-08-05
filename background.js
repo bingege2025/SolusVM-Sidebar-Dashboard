@@ -3,8 +3,10 @@
  * Handles all SolusVM API calls
  */
 
-// normalizeTagList, normalizeServers, getAllTagsFromServers → shared.js
+// normalizeTagList, normalizeServers, getAllTagsFromServers, extractApiExpiry → shared.js
 importScripts('shared.js');
+// computeReminders (pure reminder engine) → expiry-reminder.js
+importScripts('expiry-reminder.js');
 
 // Check and migrate legacy data structures
 function checkAndMigrateConfig(callback) {
@@ -246,7 +248,10 @@ function normalizeSolusVM2Server(raw = {}) {
       : bytesResource(undefined, disk),
     bw: typeof bandwidth === 'object'
       ? bytesResource(pickFirstDefined(bandwidth.used, bandwidth.usage, bandwidth.consumed), pickFirstDefined(bandwidth.total, bandwidth.limit, bandwidth.size))
-      : bytesResource(undefined, bandwidth)
+      : bytesResource(undefined, bandwidth),
+    // Best-effort billing-date extraction — used only when the user lets the
+    // extension pull expiry from the API (expirySource !== 'manual').
+    apiExpiry: extractApiExpiry(server)
   };
 }
 
@@ -414,7 +419,9 @@ function normalizeVirtFusionServer(server = {}) {
       : bytesResource(undefined, disk),
     bw: typeof bandwidth === 'object'
       ? bytesResource(pickFirstDefined(bandwidth.used, bandwidth.usage), pickFirstDefined(bandwidth.total, bandwidth.limit))
-      : bytesResource(undefined, bandwidth)
+      : bytesResource(undefined, bandwidth),
+    // Best-effort billing-date extraction (see note in normalizeSolusVM2Server).
+    apiExpiry: extractApiExpiry(server)
   };
 }
 
@@ -1607,12 +1614,61 @@ async function withActivePanel(handlerByPanel) {
   const panelType = getPanelType(config);
   const handler = handlerByPanel[panelType] || handlerByPanel.solusvm;
   const server = await handler(config);
-  // Attach the user-set expiry (works for every panel type / framework)
+  // Attach the effective expiry (user-set OR API-pulled) and keep storage in sync.
   if (server && typeof server === 'object') {
-    const exp = computeExpiry(config.expiryDate);
-    if (exp) server.expiry = exp;
+    if (!server.apiExpiry) server.apiExpiry = extractApiExpiry(server);
+    resolveExpiry(server, config);
+    syncApiExpiryToStorage(config, server);
   }
   return server;
+}
+
+// Resolve the effective expiry date + source for a server.
+// Priority: manual override > API-pulled > manual entry (fallback).
+function resolveExpiry(server, config) {
+  const manual = config.expiryDate || '';
+  const api = server.apiExpiry || '';
+  let effDate, source;
+  if (config.expirySource === 'manual') {
+    effDate = manual;
+    source = manual ? 'manual' : 'none';
+  } else if (api) {
+    effDate = api;
+    source = 'api';
+  } else {
+    effDate = manual;
+    source = manual ? 'manual' : 'none';
+  }
+  const exp = computeExpiry(effDate);
+  if (exp) {
+    server.expiry = exp;
+    server.expiryDate = effDate;
+    server.expirySource = source;
+  }
+  server.expiryDisabled = !!config.expiryDisabled;
+  return server;
+}
+
+// If the API returned an expiry and the user hasn't manually overridden it,
+// persist that date back into storage so the background reminder can use it
+// without re-hitting the network every cycle.
+function syncApiExpiryToStorage(config, server) {
+  if (config.expirySource === 'manual') return;
+  if (!server.apiExpiry) return;
+  if (server.apiExpiry === (config.expiryDate || '') && config.expirySource === 'api') return;
+  const id = config.id;
+  chrome.storage.local.get(['servers'], data => {
+    const list = Array.isArray(data.servers) ? data.servers : [];
+    let changed = false;
+    const next = list.map(s => {
+      if (s.id === id) {
+        changed = true;
+        return Object.assign({}, s, { expiryDate: server.apiExpiry, expirySource: 'api' });
+      }
+      return s;
+    });
+    if (changed) chrome.storage.local.set({ servers: next });
+  });
 }
 
 // Parse SolusVM API response, compatible with both XML and key-value formats
@@ -1842,8 +1898,9 @@ async function batchRefresh(serverIds) {
       const panel = PANEL_HANDLERS[cfg.panel_type] || PANEL_HANDLERS.solusvm;
       const data = await panel.status(cfg);
       if (data && typeof data === 'object') {
-        const exp = computeExpiry(cfg.expiryDate);
-        if (exp) data.expiry = exp;
+        if (!data.apiExpiry) data.apiExpiry = extractApiExpiry(data);
+        resolveExpiry(data, cfg);
+        syncApiExpiryToStorage(cfg, data);
       }
       results.push({ name: cfg.name, success: true, data });
     } catch (e) {
@@ -1882,7 +1939,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     batchRefresh: () => batchRefresh(message.serverIds),
     batchReboot: () => batchAction('reboot', message.serverIds),
     batchShutdown: () => batchAction('shutdown', message.serverIds),
-    testConnection: () => testConnection(message.config)
+    testConnection: () => testConnection(message.config),
+    testReminder: () => Promise.resolve(sendSampleReminder())
   };
 
   const handler = handlers[message.action];
@@ -1893,3 +1951,109 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true; // Asynchronous response
   }
 });
+
+// ─── Expiry reminder engine ───────────────────────────────────
+const REMINDER_ALARM = 'vpsExpiryReminder';
+const REMINDER_PERIOD_MIN = 360; // check every 6 hours
+
+function loadReminderConfig() {
+  return new Promise(resolve => {
+    chrome.storage.local.get(['remindersEnabled', 'expiryThresholds', 'reminderState'], data => {
+      const enabled = data.remindersEnabled !== false; // default ON
+      const thresholds = (Array.isArray(data.expiryThresholds) && data.expiryThresholds.length)
+        ? data.expiryThresholds.map(Number).filter(n => n > 0).sort((a, b) => a - b)
+        : DEFAULT_EXPIRY_THRESHOLDS.slice();
+      const state = (data.reminderState && typeof data.reminderState === 'object') ? data.reminderState : {};
+      resolve({ enabled, thresholds, state });
+    });
+  });
+}
+
+function sendReminderNotification(r) {
+  const notifId = r.level === 'expired'
+    ? `vps-exp-${r.serverId}-expired`
+    : `vps-exp-${r.serverId}-${r.threshold}`;
+  const title = r.level === 'expired'
+    ? `VPS expired: ${r.name}`
+    : `VPS expiry in ${r.daysLeft}d: ${r.name}`;
+  const message = r.level === 'expired'
+    ? `${r.name} expired ${Math.abs(r.daysLeft)} days ago — renew now.`
+    : `${r.name} expires in ${r.daysLeft} day(s). Reminder threshold: ${r.threshold} day(s).`;
+  try {
+    chrome.notifications.create(notifId, {
+      type: 'basic',
+      iconUrl: 'icons/icon128.png',
+      title,
+      message,
+      priority: 2
+    }, () => {});
+  } catch (e) {
+    console.warn('[reminder] notification failed', e);
+  }
+}
+
+function sendSampleReminder() {
+  try {
+    chrome.notifications.create('vps-exp-sample', {
+      type: 'basic',
+      iconUrl: 'icons/icon128.png',
+      title: 'VPS Dashboard · Reminder test',
+      message: 'If you can see this, expiry reminders are working. Notifications will fire 30/7/3 days before a server expires.',
+      priority: 2
+    }, () => {});
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: String(e && e.message || e) };
+  }
+}
+
+async function checkExpiryReminders() {
+  try {
+    const { enabled, thresholds, state } = await loadReminderConfig();
+    if (!enabled) return;
+    const servers = await getAllServerConfigs();
+    const now = new Date();
+    const { toNotify, nextState } = computeReminders(servers, { thresholds, now, state });
+    chrome.storage.local.set({ reminderState: nextState });
+    toNotify.forEach(sendReminderNotification);
+    if (toNotify.length) {
+      console.log(`[reminder] ${toNotify.length} notification(s) fired`);
+    }
+  } catch (e) {
+    console.warn('[reminder] check failed', e);
+  }
+}
+
+// Schedule the periodic check (and run once on install) when the APIs exist.
+if (typeof chrome !== 'undefined' && chrome.alarms) {
+  const ensureAlarm = () => {
+    try {
+      chrome.alarms.create(REMINDER_ALARM, { periodInMinutes: REMINDER_PERIOD_MIN });
+    } catch (e) {
+      console.warn('[reminder] alarm create failed', e);
+    }
+  };
+  if (chrome.runtime && chrome.runtime.onInstalled) {
+    chrome.runtime.onInstalled.addListener(() => {
+      ensureAlarm();
+      checkExpiryReminders();
+    });
+  }
+  if (chrome.runtime && chrome.runtime.onStartup) {
+    chrome.runtime.onStartup.addListener(ensureAlarm);
+  }
+  if (chrome.alarms.onAlarm) {
+    chrome.alarms.onAlarm.addListener(alarm => {
+      if (alarm && alarm.name === REMINDER_ALARM) checkExpiryReminders();
+    });
+  }
+}
+
+if (typeof chrome !== 'undefined' && chrome.notifications && chrome.notifications.onClicked) {
+  chrome.notifications.onClicked.addListener(() => {
+    // Open the popup so the user can act on the reminder.
+    if (chrome.action && chrome.action.openPopup) {
+      try { chrome.action.openPopup(); } catch (e) {}
+    }
+  });
+}
